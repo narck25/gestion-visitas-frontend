@@ -307,9 +307,21 @@ export default function Home() {
                 )}
               </button>
 
-              <p className="text-sm text-gray-500 text-center mt-4">
-                Usa tus credenciales del sistema para acceder
-              </p>
+              <div className="pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-600 text-center">
+                  ¿No tienes una cuenta?{" "}
+                  <Link
+                    href="/auth/register"
+                    onClick={() => setShowLoginForm(false)}
+                    className="text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Regístrate aquí
+                  </Link>
+                </p>
+                <p className="text-xs text-gray-500 text-center mt-2">
+                  Usa tus credenciales del sistema para acceder
+                </p>
+              </div>
             </div>
           </div>
         </div>

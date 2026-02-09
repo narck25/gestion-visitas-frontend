@@ -18,6 +18,23 @@ export interface LoginResponse {
   message: string;
 }
 
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface RegisterResponse {
+  message: string;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+  };
+}
+
 // Función para iniciar sesión
 export async function login(username: string, password: string): Promise<LoginResponse> {
   try {
@@ -49,6 +66,48 @@ export async function login(username: string, password: string): Promise<LoginRe
       throw {
         ...apiError,
         message: `Error de validación: ${validationMessages}`,
+      } as ApiError;
+    }
+    
+    throw apiError;
+  }
+}
+
+// Función para registrar un nuevo usuario
+export async function register(name: string, email: string, password: string, confirmPassword: string): Promise<RegisterResponse> {
+  try {
+    // Validar datos antes de enviar
+    const validation = validateRegistration(name, email, password, confirmPassword);
+    if (!validation.isValid) {
+      throw {
+        message: validation.message,
+        status: 400,
+      } as ApiError;
+    }
+
+    const response = await apiFetch<RegisterResponse>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password, confirmPassword }),
+    });
+    
+    return response;
+  } catch (error) {
+    const apiError = error as ApiError;
+    console.error('Error al registrar usuario:', apiError.message);
+    
+    // Manejar errores específicos
+    if (apiError.status === 400 && apiError.errors) {
+      const validationMessages = Object.values(apiError.errors).flat().join(', ');
+      throw {
+        ...apiError,
+        message: `Error de validación: ${validationMessages}`,
+      } as ApiError;
+    }
+    
+    if (apiError.status === 409) {
+      throw {
+        ...apiError,
+        message: 'El usuario ya existe con este email',
       } as ApiError;
     }
     
@@ -132,6 +191,77 @@ export function validateCredentials(username: string, password: string): { isVal
     return {
       isValid: false,
       message: 'La contraseña debe tener al menos 6 caracteres',
+    };
+  }
+  
+  return {
+    isValid: true,
+    message: '',
+  };
+}
+
+// Función para validar datos de registro
+export function validateRegistration(name: string, email: string, password: string, confirmPassword: string): { isValid: boolean; message: string } {
+  const trimmedName = name.trim();
+  const trimmedEmail = email.trim();
+  const trimmedPassword = password.trim();
+  const trimmedConfirmPassword = confirmPassword.trim();
+  
+  if (!trimmedName) {
+    return {
+      isValid: false,
+      message: 'El nombre completo es requerido',
+    };
+  }
+  
+  if (!trimmedEmail) {
+    return {
+      isValid: false,
+      message: 'El email es requerido',
+    };
+  }
+  
+  // Validar formato de email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(trimmedEmail)) {
+    return {
+      isValid: false,
+      message: 'El email no tiene un formato válido',
+    };
+  }
+  
+  if (!trimmedPassword) {
+    return {
+      isValid: false,
+      message: 'La contraseña es requerida',
+    };
+  }
+  
+  if (!trimmedConfirmPassword) {
+    return {
+      isValid: false,
+      message: 'La confirmación de contraseña es requerida',
+    };
+  }
+  
+  if (trimmedPassword !== trimmedConfirmPassword) {
+    return {
+      isValid: false,
+      message: 'Las contraseñas no coinciden',
+    };
+  }
+  
+  if (trimmedPassword.length < 6) {
+    return {
+      isValid: false,
+      message: 'La contraseña debe tener al menos 6 caracteres',
+    };
+  }
+  
+  if (trimmedName.length < 2) {
+    return {
+      isValid: false,
+      message: 'El nombre debe tener al menos 2 caracteres',
     };
   }
   
