@@ -64,32 +64,83 @@ export default function CapturaPage() {
   };
 
   const startCamera = async () => {
+    console.log("Intentando activar cámara...");
+    
     if (!navigator.mediaDevices?.getUserMedia) {
-      setError("Tu navegador no soporta acceso a la cámara");
+      const errorMsg = "Tu navegador no soporta acceso a la cámara";
+      console.error(errorMsg);
+      setError(errorMsg);
       return;
     }
 
     setIsLoadingCamera(true);
     setError(null);
+    setSuccess(null);
 
     try {
+      console.log("Solicitando permisos de cámara...");
+      
+      // Primero detener cualquier cámara activa
+      stopCamera();
+      
+      // Solicitar acceso a la cámara
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: "environment",
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
+          facingMode: "environment", // Cámara trasera
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
       });
 
+      console.log("Cámara accedida exitosamente, stream:", stream);
+
       if (videoRef.current) {
+        console.log("Configurando elemento video...");
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        
+        // Esperar a que el video esté listo
+        videoRef.current.onloadedmetadata = () => {
+          console.log("Video metadata cargada, reproduciendo...");
+          videoRef.current?.play().then(() => {
+            console.log("Video reproduciéndose exitosamente");
+            setIsLoadingCamera(false);
+            setSuccess("📸 Cámara activada. Presiona 'Capturar Foto' para tomar una imagen.");
+          }).catch((playError) => {
+            console.error("Error reproduciendo video:", playError);
+            setError("Error al reproducir video de la cámara");
+            setIsLoadingCamera(false);
+          });
+        };
+        
+        videoRef.current.onerror = (error) => {
+          console.error("Error en elemento video:", error);
+          setError("Error en el elemento de video");
+          setIsLoadingCamera(false);
+        };
+      } else {
+        console.error("Elemento video no encontrado");
+        setError("Elemento de video no disponible");
+        setIsLoadingCamera(false);
       }
-      setIsLoadingCamera(false);
-      setSuccess("📸 Cámara activada. Presiona 'Capturar Foto' para tomar una imagen.");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error accediendo a la cámara:", err);
-      setError("No se pudo acceder a la cámara. Asegúrate de permitir el acceso.");
+      
+      let errorMessage = "No se pudo acceder a la cámara";
+      
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errorMessage = "Permiso de cámara denegado. Por favor habilita el acceso a la cámara en la configuración de tu navegador.";
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        errorMessage = "No se encontró ninguna cámara disponible en el dispositivo.";
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        errorMessage = "La cámara está siendo usada por otra aplicación o no está disponible.";
+      } else if (err.name === 'OverconstrainedError') {
+        errorMessage = "No se puede cumplir con las restricciones de la cámara solicitada.";
+      } else if (err.name === 'SecurityError') {
+        errorMessage = "Acceso a la cámara bloqueado por razones de seguridad. Asegúrate de usar HTTPS.";
+      }
+      
+      setError(errorMessage);
       setIsLoadingCamera(false);
     }
   };

@@ -204,7 +204,7 @@ export default function Home() {
             </Link>
             <Link 
               href="/captura" 
-              className="px-8 py-4 bg-white text-blue-600 text-lg font-semibold rounded-xl border-2 border-blue-600 hover:bg-blue-50 transition-colors"
+              className="px-8 py-4 bg-white text-gray-900 text-lg font-semibold rounded-xl border-2 border-blue-600 hover:bg-blue-50 transition-colors"
             >
               📸 Demo Captura
             </Link>
