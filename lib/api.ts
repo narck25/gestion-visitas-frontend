@@ -20,9 +20,12 @@ export function getAuthToken(): string | null {
 // Función para guardar el token de autenticación
 export function setAuthToken(token: string): void {
   if (typeof window === 'undefined') {
+    console.log('setAuthToken: window is undefined (SSR), cannot save token');
     return;
   }
+  console.log(`setAuthToken: saving token to localStorage, token length: ${token.length}`);
   localStorage.setItem('auth_token', token);
+  console.log('setAuthToken: token saved successfully');
 }
 
 // Función para eliminar el token de autenticación (logout)

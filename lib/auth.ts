@@ -127,11 +127,14 @@ export function logout(): void {
 // Función para verificar si el usuario está autenticado
 export function isAuthenticated(): boolean {
   if (typeof window === 'undefined') {
+    console.log('isAuthenticated: window is undefined (SSR), returning false');
     return false;
   }
   
   const token = localStorage.getItem('auth_token');
-  return !!token;
+  const isAuth = !!token;
+  console.log(`isAuthenticated: token exists = ${!!token}, returning ${isAuth}`);
+  return isAuth;
 }
 
 // Función para obtener información del usuario desde el token
