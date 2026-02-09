@@ -269,7 +269,7 @@ export default function Home() {
                   value={loginData.username}
                   onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
                   placeholder="Ingresa tu usuario"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
                   disabled={isLoading}
                 />
               </div>
@@ -283,7 +283,7 @@ export default function Home() {
                   value={loginData.password}
                   onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                   placeholder="Ingresa tu contraseña"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
                   disabled={isLoading}
                 />
               </div>

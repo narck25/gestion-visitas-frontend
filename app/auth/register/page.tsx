@@ -139,7 +139,7 @@ export default function RegisterPage() {
                     value={formData.name}
                     onChange={handleChange}
                     placeholder="Ingresa tu nombre completo"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
                     disabled={isLoading}
                     required
                   />
@@ -160,7 +160,7 @@ export default function RegisterPage() {
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="ejemplo@correo.com"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
                     disabled={isLoading}
                     required
                   />
@@ -181,7 +181,7 @@ export default function RegisterPage() {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Mínimo 6 caracteres"
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
                     disabled={isLoading}
                     required
                   />
@@ -216,7 +216,7 @@ export default function RegisterPage() {
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     placeholder="Repite tu contraseña"
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
                     disabled={isLoading}
                     required
                   />
