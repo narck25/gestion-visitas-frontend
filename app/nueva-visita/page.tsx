@@ -369,7 +369,7 @@ export default function NuevaVisitaPage() {
                     setVisitData({ ...visitData, cliente: e.target.value })
                   }
                   placeholder="Ingresa el nombre del cliente"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
                 />
               </div>
               <div>
@@ -383,7 +383,7 @@ export default function NuevaVisitaPage() {
                   }
                   placeholder="Agrega notas adicionales sobre la visita"
                   rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
                 />
               </div>
             </div>
