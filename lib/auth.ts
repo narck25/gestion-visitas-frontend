@@ -164,6 +164,36 @@ export function getUserInfo(): { username: string; name: string; role: string } 
   }
 }
 
+// Función para verificar si el usuario es administrador
+export function isAdmin(): boolean {
+  const userInfo = getUserInfo();
+  return userInfo?.role === 'admin';
+}
+
+// Función para verificar si el usuario es promotor
+export function isPromotor(): boolean {
+  const userInfo = getUserInfo();
+  return userInfo?.role === 'promotor' || userInfo?.role === 'user';
+}
+
+// Función para obtener el rol del usuario
+export function getUserRole(): string | null {
+  const userInfo = getUserInfo();
+  return userInfo?.role || null;
+}
+
+// Función para verificar si el usuario tiene un rol específico
+export function hasRole(role: string): boolean {
+  const userInfo = getUserInfo();
+  return userInfo?.role === role;
+}
+
+// Función para verificar si el usuario tiene alguno de los roles especificados
+export function hasAnyRole(roles: string[]): boolean {
+  const userInfo = getUserInfo();
+  return roles.includes(userInfo?.role || '');
+}
+
 // Función para validar credenciales
 export function validateCredentials(username: string, password: string): { isValid: boolean; message: string } {
   const trimmedUsername = username.trim();

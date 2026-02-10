@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Roles - Sistema de Visitas</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #718096;
+            margin-bottom: 30px;
+        }
+        
+        .role-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .admin-section {
+            border-color: #4299e1;
+            background: #ebf8ff;
+        }
+        
+        .promotor-section {
+            border-color: #48bb78;
+            background: #f0fff4;
+        }
+        
+        .user-section {
+            border-color: #a0aec0;
+            background: #f7fafc;
+        }
+        
+        .role-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .role-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .admin-badge {
+            background: #4299e1;
+            color: white;
+        }
+        
+        .promotor-badge {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .user-badge {
+            background: #a0aec0;
+            color: white;
+        }
+        
+        .permissions {
+            margin-top: 15px;
+        }
+        
+        .permission-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            padding: 8px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .permission-allowed {
+            color: #48bb78;
+        }
+        
+        .permission-denied {
+            color: #f56565;
+        }
+        
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .test-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .test-admin {
+            background: #4299e1;
+            color: white;
+        }
+        
+        .test-promotor {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .test-user {
+            background: #a0aec0;
+            color: white;
+        }
+        
+        .test-logout {
+            background: #f56565;
+            color: white;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .result-success {
+            background: #c6f6d5;
+            border: 2px solid #48bb78;
+            color: #22543d;
+        }
+        
+        .result-error {
+            background: #fed7d7;
+            border: 2px solid #f56565;
+            color: #742a2a;
+        }
+        
+        .current-user {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 8px;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .current-user h3 {
+            margin-top: 0;
+        }
+        
+        .user-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .user-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .admin-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .promotor-avatar {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+        
+        .user-avatar {
+            background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+        }
+        
+        .user-details {
+            flex: 1;
+        }
+        
+        .user-role {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        
+        .instructions {
+            background: #fffaf0;
+            border: 2px solid #ed8936;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .instructions h3 {
+            color: #dd6b20;
+            margin-top: 0;
+        }
+        
+        .instructions ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Sistema de Control de Roles</h1>
+        <p class="subtitle">Prueba la implementación de roles de administrador y promotor</p>
+        
+        <div class="current-user">
+            <h3>Usuario Actual</h3>
+            <div class="user-info">
+                <div id="userAvatar" class="user-avatar">?</div>
+                <div class="user-details">
+                    <div id="userName">No autenticado</div>
+                    <div id="userRole" class="user-role">Sin rol</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-buttons">
+            <button class="test-button test-admin" onclick="simulateLogin('admin')">Simular Login como Admin</button>
+            <button class="test-button test-promotor" onclick="simulateLogin('promotor')">Simular Login como Promotor</button>
+            <button class="test-button test-user" onclick="simulateLogin('user')">Simular Login como Usuario</button>
+            <button class="test-button test-logout" onclick="simulateLogout()">Cerrar Sesión</button>
+        </div>
+        
+        <div id="result" class="result"></div>
+        
+        <div class="role-section admin-section">
+            <div class="role-title">
+                <span>👑 Rol: Administrador</span>
+                <span class="role-badge admin-badge">admin</span>
+            </div>
+            <p>Acceso completo a todas las funcionalidades del sistema.</p>
+            
+            <div class="permissions">
+                <div class="permission-item">
+                    <span class="permission-allowed">✓</span>
+                    <span>Acceso al Panel de Administración</span>
+                </div>
+                <div class="permission-item">
+                    <span class="permission-allowed">✓</span>
+                    <span>Ver todas las visitas (sin restricciones)</span>
+                </div>
+                <div class="permission-item">
+                    <span class="permission-allowed">✓</span>
+                    <span>Gestión de usuarios y roles</span>
+                </div>
+                <div class="permission-item">
+                    <span class="permission-allowed">✓</span>
+                    <span>Configuración del sistema</span>
+                </div>
+                <div class="permission-item">
+                    <span class="permission-allowed">✓</span>
+                    <span>Reportes y estadísticas completas</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="role-section promotor-section">
+            <div class="role-title">
+                <span>👤 Rol: Promotor</span>
+                <span class="role-badge promotor-badge">promotor</span>
+            </div>
+            <p>Acceso limitado a funcionalidades específicas de promotor.</p>
+            
+            <div class="permissions">
+                <div class="permission-item">
+                    <span class="permission-denied">✗</span>
+                    <span>Acceso al Panel de Administración</span>
+                </div>
+                <div class="permission-item">
+                    <span class="permission-allowed">✓</span>
+                    <span>Ver solo sus propias visitas</span>
+                </div>
+                <div class="permission-item">
+                    <span class="permission-allowed">✓</span>
+                    <span>Registrar nuevas visitas</span>
+                </div>
+                <div class="permission-item">
+                    <span class="permission-denied">✗</span>
+                    <span>Gestión de usuarios y roles</span>
+                </div>
+                <div class="permission-item">
+                    <span class="permission-allowed">✓</span>
+                    <span>Reportes básicos de sus actividades</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="role-section user-section">
+            <div class="role-title">
+                <span>👤 Rol: Usuario Básico</span>
+                <span class="role-badge user-badge">user</span>
+            </div>
+            <p>Acceso mínimo con funcionalidades básicas.</p>
+            
+            <div class="permissions">
+                <div class="permission-item">
+                    <span class="permission-denied">✗</span>
+                    <span>Acceso al Panel de Administración</span>
+                </div>
+                <div class="permission-item">
+                    <span class="permission-allowed">✓</span>
+                    <span>Ver solo sus propias visitas</span>
+                </div>
+                <div class="permission-item">
+                    <span class="permission-allowed">✓</span>
+                    <span>Registrar nuevas visitas</span>
+                </div>
+                <div class="permission-item">
+                    <span class="permission-denied">✗</span>
+                    <span>Gestión de usuarios y roles</span>
+                </div>
+                <div class="permission-item">
+                    <span class="permission-denied">✗</span>
+                    <span>Reportes y estadísticas</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 Instrucciones para Probar</h3>
+            <ul>
+                <li>Haz clic en "Simular Login como Admin" para probar el rol de administrador</li>
+                <li>Haz clic en "Simular Login como Promotor" para probar el rol de promotor</li>
+                <li>Haz clic en "Simular Login como Usuario" para probar el rol básico</li>
+                <li>Observa cómo cambian los permisos y el acceso</li>
+                <li>Prueba acceder a diferentes secciones del sistema real</li>
+            </ul>
+            <p><strong>Nota:</strong> Esta es una simulación. Para probar en el sistema real, necesitas credenciales válidas con los roles correspondientes.</p>
+        </div>
+    </div>
+    
+    <script>
+        let currentUser = null;
+        
+        function simulateLogin(role) {
+            const users = {
+                admin: {
+                    name: "Administrador Principal",
+                    username: "admin",
+                    role: "admin",
+                    avatar: "A"
+                },
+                promotor: {
+                    name: "Juan Pérez",
+                    username: "juan.perez",
+                    role: "promotor",
+                    avatar: "J"
+                },
+                user: {
+                    name: "Usuario Básico",
+                    username: "usuario",
+                    role: "user",
+                    avatar: "U"
+                }
+            };
+            
+            currentUser = users[role];
+            updateUserDisplay();
+            
+            // Simular almacenamiento en localStorage
+            const fakeToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IiR7Y3VycmVudFVzZXIudXNlcm5hbWV9IiwibmFtZSI6IiR7Y3VycmVudFVzZXIubmFtZX0iLCJyb2xlIjoiJHtjdXJyZW50VXNlci5yb2xlfSIsImlhdCI6MTcwNzUwMDAwMCwiZXhwIjoxNzA3NTg2NDAwfQ.fake-signature`;
+            localStorage.setItem('auth_token', fakeToken);
+            
+            showResult(`✅ Login exitoso como ${currentUser.name} (${currentUser.role})`, 'success');
+            
+            // Mostrar acciones disponibles
+            setTimeout(() => {
+                let actions = '';
+                if (role === 'admin') {
+                    actions = 'Puedes acceder a: Panel de Administración, Todas las visitas, Gestión de usuarios';
+                } else if (role === 'promotor') {
+                    actions = 'Puedes acceder a: Tus visitas, Nueva visita, Reportes básicos';
+                } else {
+                    actions = 'Puedes acceder a: Tus visitas, Nueva visita';
+                }
+                showResult(`🔑 Permisos activados: ${actions}`, 'success');
+            }, 1000);
+        }
+        
+        function simulateLogout() {
+            currentUser = null;
+            localStorage.removeItem('auth_token');
+            updateUserDisplay();
+            showResult('👋 Sesión cerrada exitosamente', 'success');
+        }
+        
+        function updateUserDisplay() {
+            const avatar = document.getElementById('userAvatar');
+            const name = document.getElementById('userName');
+            const role = document.getElementById('userRole');
+            
+            if (currentUser) {
+                avatar.textContent = currentUser.avatar;
+                avatar.className = `user-avatar ${currentUser.role}-avatar`;
+                name.textContent = `${currentUser.name} (@${currentUser.username})`;
+                role.textContent = currentUser.role;
+                role.className = `user-role ${currentUser.role}-badge`;
+            } else {
+                avatar.textContent = '?';
+                avatar.className = 'user-avatar';
+                name.textContent = 'No autenticado';
+                role.textContent = 'Sin rol';
+                role.className = 'user-role';
+            }
+        }
+        
+        function showResult(message, type) {
+            const result = document.getElementById('result');
+            result.textContent = message;
+            result.className = `result result-${type}`;
+            result.style.display = 'block';
+            
+            setTimeout(() => {
+                result.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Inicializar
+        updateUserDisplay();
+    </script>
+</body>
+</html>

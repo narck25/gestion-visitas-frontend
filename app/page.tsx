@@ -208,6 +208,14 @@ export default function Home() {
             >
               📸 Demo Captura
             </Link>
+            {userInfo?.role === 'admin' && (
+              <Link 
+                href="/admin" 
+                className="px-8 py-4 bg-purple-600 text-white text-lg font-semibold rounded-xl hover:bg-purple-700 transition-colors shadow-lg"
+              >
+                👑 Panel Admin
+              </Link>
+            )}
           </div>
 
           {/* PWA Status */}
