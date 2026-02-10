@@ -6,7 +6,8 @@ const protectedRoutes = [
   '/nueva-visita',
   '/visitas',
   '/admin',
-  '/captura'
+  '/captura',
+  '/mis-visitas'
 ];
 
 // Rutas públicas (accesibles sin autenticación)
