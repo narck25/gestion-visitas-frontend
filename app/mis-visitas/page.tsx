@@ -17,7 +17,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Navigation
 } from "lucide-react";
 import { isAuthenticated, getUserInfo, isAdmin } from "@/lib/auth";
 
@@ -28,6 +29,8 @@ interface Visita {
   hora: string;
   cliente: string;
   ubicacion: string;
+  lat?: number;
+  lng?: number;
   promotor: string;
   promotorId: number;
   estado: 'completada' | 'pendiente' | 'cancelada';
@@ -35,7 +38,7 @@ interface Visita {
   fotos: number;
 }
 
-// Datos de ejemplo para demostración
+// Datos de ejemplo para demostración con coordenadas
 const visitasEjemplo: Visita[] = [
   {
     id: 1,
@@ -43,6 +46,8 @@ const visitasEjemplo: Visita[] = [
     hora: '10:30',
     cliente: 'Tienda ABC',
     ubicacion: 'Centro Comercial Plaza',
+    lat: 19.4326,
+    lng: -99.1332,
     promotor: 'Juan Pérez',
     promotorId: 101,
     estado: 'completada',
@@ -55,6 +60,8 @@ const visitasEjemplo: Visita[] = [
     hora: '14:00',
     cliente: 'Supermercado XYZ',
     ubicacion: 'Av. Principal 123',
+    lat: 19.4342,
+    lng: -99.1345,
     promotor: 'María García',
     promotorId: 102,
     estado: 'completada',
@@ -67,6 +74,8 @@ const visitasEjemplo: Visita[] = [
     hora: '16:45',
     cliente: 'Farmacia Salud',
     ubicacion: 'Calle Secundaria 456',
+    lat: 19.4330,
+    lng: -99.1320,
     promotor: 'Carlos López',
     promotorId: 103,
     estado: 'pendiente',
@@ -79,6 +88,8 @@ const visitasEjemplo: Visita[] = [
     hora: '09:15',
     cliente: 'Restaurante Sabor',
     ubicacion: 'Zona Gastronómica',
+    lat: 19.4350,
+    lng: -99.1350,
     promotor: 'Ana Martínez',
     promotorId: 104,
     estado: 'completada',
@@ -91,6 +102,8 @@ const visitasEjemplo: Visita[] = [
     hora: '11:30',
     cliente: 'Tienda Moda',
     ubicacion: 'Centro Comercial Moderno',
+    lat: 19.4310,
+    lng: -99.1310,
     promotor: 'Pedro Sánchez',
     promotorId: 105,
     estado: 'cancelada',
@@ -103,6 +116,8 @@ const visitasEjemplo: Visita[] = [
     hora: '13:00',
     cliente: 'Cafetería Aroma',
     ubicacion: 'Plaza Central',
+    lat: 19.4360,
+    lng: -99.1360,
     promotor: 'Laura Rodríguez',
     promotorId: 106,
     estado: 'completada',
@@ -115,6 +130,8 @@ const visitasEjemplo: Visita[] = [
     hora: '15:20',
     cliente: 'Papelería Escolar',
     ubicacion: 'Calle Escuela 789',
+    lat: 19.4370,
+    lng: -99.1370,
     promotor: 'Roberto Fernández',
     promotorId: 107,
     estado: 'completada',
@@ -127,6 +144,8 @@ const visitasEjemplo: Visita[] = [
     hora: '08:45',
     cliente: 'Ferretería Construye',
     ubicacion: 'Av. Industrial 321',
+    lat: 19.4380,
+    lng: -99.1380,
     promotor: 'Sofía Vargas',
     promotorId: 108,
     estado: 'pendiente',
@@ -236,6 +255,20 @@ function MisVisitasContent() {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  // Función para abrir ubicación en Google Maps
+  const abrirGoogleMaps = (visita: Visita) => {
+    if (visita.lat && visita.lng) {
+      // Si hay coordenadas, abrir con lat,lng
+      const url = `https://www.google.com/maps?q=${visita.lat},${visita.lng}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      // Si no hay coordenadas, usar la dirección como fallback
+      const query = encodeURIComponent(visita.ubicacion);
+      const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const estadisticas = {
@@ -507,12 +540,19 @@ function MisVisitasContent() {
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col md:flex-row items-center gap-2">
+                      <button
+                        onClick={() => abrirGoogleMaps(visita)}
+                        className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 font-medium rounded-lg flex items-center gap-2"
+                      >
+                        <Navigation size={18} />
+                        Ver Ubicación
+                      </button>
                       <button className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2">
                         <Eye size={18} />
                         Ver Detalles
                       </button>
-                      <ChevronRight className="text-gray-400" />
+                      <ChevronRight className="text-gray-400 hidden md:block" />
                     </div>
                   </div>
                 </div>
