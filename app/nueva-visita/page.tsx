@@ -3,14 +3,24 @@
 import { useState, useEffect, useRef } from "react";
 import { 
   Camera, MapPin, Upload, X, Check, ChevronLeft, ChevronRight,
-  AlertCircle, CheckCircle, Loader2, Home, RotateCcw
+  AlertCircle, CheckCircle, Loader2, Home, RotateCcw, Search, User
 } from "lucide-react";
+import { getClients } from "@/lib/clients";
+import { getUserInfo } from "@/lib/auth";
 
 // Tipos
 type Step = 1 | 2 | 3 | 4 | 5;
 
+interface Client {
+  id: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface VisitData {
   cliente: string;
+  clienteId: number | null;
   notas: string;
   location: { lat: number; lng: number; accuracy: number } | null;
   fotoAntes: { file: File; url: string } | null;
@@ -21,6 +31,7 @@ export default function NuevaVisitaPage() {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [visitData, setVisitData] = useState<VisitData>({
     cliente: "",
+    clienteId: null,
     notas: "",
     location: null,
     fotoAntes: null,
@@ -33,10 +44,18 @@ export default function NuevaVisitaPage() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  
+  // Estados para clientes
+  const [clients, setClients] = useState<Client[]>([]);
+  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+  const [isLoadingClients, setIsLoadingClients] = useState(false);
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
 
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const clientInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Función para obtener ubicación GPS
   const getLocation = () => {
@@ -220,7 +239,10 @@ export default function NuevaVisitaPage() {
       const { createVisit, uploadBothVisitImages } = await import("@/lib/visits");
 
       // 1. Obtener o crear cliente
-      const clientId = await getOrCreateClient(visitData.cliente.trim());
+      let clientId = visitData.clienteId;
+      if (!clientId) {
+        clientId = await getOrCreateClient(visitData.cliente.trim());
+      }
 
       // 2. Crear la visita
       const visitResponse = await createVisit({
@@ -252,6 +274,69 @@ export default function NuevaVisitaPage() {
       setError(err.message || "Error al enviar la visita. Por favor intenta de nuevo.");
       setIsSending(false);
     }
+  };
+
+  // Cargar clientes al montar el componente
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        setIsLoadingClients(true);
+        const clientsData = await getClients();
+        setClients(clientsData);
+        setFilteredClients(clientsData);
+      } catch (error) {
+        console.error("Error al cargar clientes:", error);
+        setError("No se pudieron cargar los clientes. Intenta de nuevo.");
+      } finally {
+        setIsLoadingClients(false);
+      }
+    };
+
+    loadClients();
+  }, []);
+
+  // Filtrar clientes cuando cambia el texto de búsqueda
+  useEffect(() => {
+    if (visitData.cliente.trim() === "") {
+      setFilteredClients(clients);
+      setShowClientDropdown(false);
+    } else {
+      const searchTerm = visitData.cliente.toLowerCase();
+      const filtered = clients.filter(client =>
+        client.name.toLowerCase().includes(searchTerm)
+      );
+      setFilteredClients(filtered);
+      setShowClientDropdown(filtered.length > 0);
+    }
+  }, [visitData.cliente, clients]);
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        clientInputRef.current &&
+        !clientInputRef.current.contains(event.target as Node)
+      ) {
+        setShowClientDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Función para seleccionar un cliente
+  const selectClient = (client: Client) => {
+    setVisitData({
+      ...visitData,
+      cliente: client.name,
+      clienteId: client.id,
+    });
+    setShowClientDropdown(false);
   };
 
   // Limpiar recursos
@@ -358,19 +443,69 @@ export default function NuevaVisitaPage() {
               Datos de la Visita
             </h2>
             <div className="space-y-4">
-              <div>
+              <div className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Cliente / Tienda *
                 </label>
-                <input
-                  type="text"
-                  value={visitData.cliente}
-                  onChange={(e) =>
-                    setVisitData({ ...visitData, cliente: e.target.value })
-                  }
-                  placeholder="Ingresa el nombre del cliente"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-500"
-                />
+                <div className="relative">
+                  <input
+                    ref={clientInputRef}
+                    type="text"
+                    value={visitData.cliente}
+                    onChange={(e) => {
+                      setVisitData({ ...visitData, cliente: e.target.value });
+                      setShowClientDropdown(true);
+                    }}
+                    onFocus={() => {
+                      if (visitData.cliente.trim() && filteredClients.length > 0) {
+                        setShowClientDropdown(true);
+                      }
+                    }}
+                    placeholder="Busca o ingresa un cliente"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-500 pr-10"
+                  />
+                  {isLoadingClients ? (
+                    <div className="absolute right-3 top-3">
+                      <Loader2 className="animate-spin text-gray-400" size={20} />
+                    </div>
+                  ) : (
+                    <Search className="absolute right-3 top-3 text-gray-400" size={20} />
+                  )}
+                </div>
+                
+                {/* Dropdown de clientes */}
+                {showClientDropdown && filteredClients.length > 0 && (
+                  <div
+                    ref={dropdownRef}
+                    className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"
+                  >
+                    {filteredClients.map((client) => (
+                      <button
+                        key={client.id}
+                        type="button"
+                        onClick={() => selectClient(client)}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                      >
+                        <User className="text-gray-400" size={18} />
+                        <div>
+                          <p className="font-medium text-gray-900">{client.name}</p>
+                          <p className="text-xs text-gray-500">
+                            ID: {client.id}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Mensaje cuando no hay resultados */}
+                {showClientDropdown && visitData.cliente.trim() && filteredClients.length === 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-4">
+                    <p className="text-gray-600 text-center">
+                      No se encontraron clientes. Puedes ingresar un nuevo cliente.
+                    </p>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
