@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { isAuthenticated, login, validateCredentials } from "@/lib/auth";
 import { AlertCircle, Loader2, ArrowLeft, User, Lock } from "lucide-react";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
 
   // Verificar autenticación al cargar
   useEffect(() => {
@@ -22,12 +24,19 @@ export default function LoginPage() {
       } else {
         console.log("Usuario no autenticado, mostrando formulario de login");
         setIsCheckingAuth(false);
+        
+        // Obtener parámetro de redirección si existe
+        const redirect = searchParams.get('redirect');
+        if (redirect) {
+          setRedirectPath(redirect);
+          console.log("Redirección pendiente después de login:", redirect);
+        }
       }
     };
 
     // Pequeño delay para asegurar que localStorage esté disponible
     setTimeout(checkAuth, 100);
-  }, [router]);
+  }, [router, searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,9 +62,10 @@ export default function LoginPage() {
       setTimeout(() => {
         console.log("Verificando autenticación después de login:", isAuthenticated());
         
-        // Redirigir a la página principal
-        router.push("/");
-        console.log("Redirigiendo a /");
+        // Redirigir a la ruta original o a la página principal
+        const targetPath = redirectPath || "/";
+        console.log("Redirigiendo a:", targetPath);
+        router.push(targetPath);
       }, 100);
 
     } catch (err: any) {
@@ -236,5 +246,22 @@ export default function LoginPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-blue-600 text-2xl">⏳</span>
+          </div>
+          <p className="text-gray-600">Cargando formulario de login...</p>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -43,9 +43,14 @@ export async function login(username: string, password: string): Promise<LoginRe
       body: JSON.stringify({ username, password }),
     });
     
-    // Guardar token en localStorage
+    // Guardar token en localStorage y cookies
     if (response.token) {
       setAuthToken(response.token);
+      
+      // También guardar en cookies para el middleware
+      if (typeof document !== 'undefined') {
+        document.cookie = `auth_token=${response.token}; path=/; max-age=86400; SameSite=Strict`;
+      }
     }
     
     return response;
@@ -118,10 +123,32 @@ export async function register(name: string, email: string, password: string, co
 // Función para cerrar sesión
 export function logout(): void {
   removeAuthToken();
+  
+  // Eliminar cookie de autenticación
+  if (typeof document !== 'undefined') {
+    document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict';
+  }
+  
   // Redirigir a la página principal
   if (typeof window !== 'undefined') {
     window.location.href = '/';
   }
+}
+
+// Función para obtener token de cookies
+function getTokenFromCookies(): string | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'auth_token' && value) {
+      return value;
+    }
+  }
+  return null;
 }
 
 // Función para verificar si el usuario está autenticado
@@ -131,10 +158,21 @@ export function isAuthenticated(): boolean {
     return false;
   }
   
-  const token = localStorage.getItem('auth_token');
-  const isAuth = !!token;
-  console.log(`isAuthenticated: token exists = ${!!token}, returning ${isAuth}`);
-  return isAuth;
+  // Primero intentar obtener de localStorage
+  const localStorageToken = localStorage.getItem('auth_token');
+  
+  // Si no hay en localStorage, intentar obtener de cookies
+  if (!localStorageToken) {
+    const cookieToken = getTokenFromCookies();
+    if (cookieToken) {
+      // Si hay token en cookies pero no en localStorage, sincronizar
+      localStorage.setItem('auth_token', cookieToken);
+      return true;
+    }
+    return false;
+  }
+  
+  return true;
 }
 
 // Función para obtener información del usuario desde el token
