@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { getClients } from "@/lib/clients";
 import { getUserInfo } from "@/lib/auth";
+import CameraCapture from "@/components/CameraCapture";
 
 // Tipos
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -23,8 +24,8 @@ interface VisitData {
   clienteId: number | null;
   notas: string;
   location: { lat: number; lng: number; accuracy: number } | null;
-  fotoAntes: { file: File; url: string } | null;
-  fotoDespues: { file: File; url: string } | null;
+  fotoAntes: { file: File; url: string; base64: string } | null;
+  fotoDespues: { file: File; url: string; base64: string } | null;
 }
 
 export default function NuevaVisitaPage() {
@@ -40,7 +41,6 @@ export default function NuevaVisitaPage() {
 
   // Estados para manejo de UI
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [isLoadingCamera, setIsLoadingCamera] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -52,8 +52,6 @@ export default function NuevaVisitaPage() {
   const [showClientDropdown, setShowClientDropdown] = useState(false);
 
   // Refs
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const clientInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -106,84 +104,56 @@ export default function NuevaVisitaPage() {
     }
   }, [currentStep]);
 
-  // Función para iniciar cámara
-  const startCamera = async () => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setError("Tu dispositivo no soporta acceso a la cámara");
-      return;
+  // Función para manejar captura de foto ANTES
+  const handleFotoAntesCapture = (imageBase64: string) => {
+    // Convertir base64 a Blob y luego a File
+    const base64Data = imageBase64.split(',')[1];
+    const binaryData = atob(base64Data);
+    const arrayBuffer = new ArrayBuffer(binaryData.length);
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    for (let i = 0; i < binaryData.length; i++) {
+      uint8Array[i] = binaryData.charCodeAt(i);
     }
-
-    setIsLoadingCamera(true);
-    setError(null);
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }
-      });
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-      setIsLoadingCamera(false);
-    } catch (err) {
-      setError("No se pudo acceder a la cámara. Asegúrate de permitir el acceso");
-      setIsLoadingCamera(false);
-    }
+    
+    const blob = new Blob([uint8Array], { type: 'image/jpeg' });
+    const file = new File([blob], `foto_antes_${Date.now()}.jpg`, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+    
+    const url = URL.createObjectURL(blob);
+    
+    setVisitData({
+      ...visitData,
+      fotoAntes: { file, url, base64: imageBase64 }
+    });
   };
 
-  // Función para detener cámara
-  const stopCamera = () => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      videoRef.current.srcObject = null;
+  // Función para manejar captura de foto DESPUÉS
+  const handleFotoDespuesCapture = (imageBase64: string) => {
+    // Convertir base64 a Blob y luego a File
+    const base64Data = imageBase64.split(',')[1];
+    const binaryData = atob(base64Data);
+    const arrayBuffer = new ArrayBuffer(binaryData.length);
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    for (let i = 0; i < binaryData.length; i++) {
+      uint8Array[i] = binaryData.charCodeAt(i);
     }
-  };
-
-  // Función para capturar foto
-  const capturePhoto = (tipo: "antes" | "despues") => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const context = canvas.getContext("2d");
-
-    if (!context) return;
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const file = new File([blob], `foto_${tipo}_${Date.now()}.jpg`, {
-          type: "image/jpeg",
-          lastModified: Date.now(),
-        });
-        const url = URL.createObjectURL(blob);
-
-        if (tipo === "antes") {
-          setVisitData({ ...visitData, fotoAntes: { file, url } });
-        } else {
-          setVisitData({ ...visitData, fotoDespues: { file, url } });
-        }
-
-        stopCamera();
-      }
-    }, "image/jpeg", 0.9);
-  };
-
-  // Función para retomar foto
-  const retakePhoto = (tipo: "antes" | "despues") => {
-    if (tipo === "antes") {
-      if (visitData.fotoAntes) URL.revokeObjectURL(visitData.fotoAntes.url);
-      setVisitData({ ...visitData, fotoAntes: null });
-    } else {
-      if (visitData.fotoDespues) URL.revokeObjectURL(visitData.fotoDespues.url);
-      setVisitData({ ...visitData, fotoDespues: null });
-    }
-    startCamera();
+    
+    const blob = new Blob([uint8Array], { type: 'image/jpeg' });
+    const file = new File([blob], `foto_despues_${Date.now()}.jpg`, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+    
+    const url = URL.createObjectURL(blob);
+    
+    setVisitData({
+      ...visitData,
+      fotoDespues: { file, url, base64: imageBase64 }
+    });
   };
 
   // Validar si se puede avanzar al siguiente paso
@@ -207,7 +177,6 @@ export default function NuevaVisitaPage() {
   // Navegar entre pasos
   const goToStep = (step: Step) => {
     setError(null);
-    stopCamera();
     setCurrentStep(step);
   };
 
@@ -342,7 +311,6 @@ export default function NuevaVisitaPage() {
   // Limpiar recursos
   useEffect(() => {
     return () => {
-      stopCamera();
       if (visitData.fotoAntes) URL.revokeObjectURL(visitData.fotoAntes.url);
       if (visitData.fotoDespues) URL.revokeObjectURL(visitData.fotoDespues.url);
     };
@@ -586,132 +554,22 @@ export default function NuevaVisitaPage() {
 
         {/* Paso 3: Foto ANTES */}
         {currentStep === 3 && (
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-              <Camera className="text-green-600" size={28} />
-              Foto ANTES
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Toma una foto del estado inicial antes de realizar la visita
-            </p>
-
-            {!visitData.fotoAntes && !videoRef.current?.srcObject ? (
-              <div className="text-center py-12">
-                <Camera className="mx-auto mb-4 text-gray-300" size={64} />
-                <button
-                  onClick={startCamera}
-                  disabled={isLoadingCamera}
-                  className="bg-green-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-green-700 inline-flex items-center gap-2"
-                >
-                  {isLoadingCamera ? <Loader2 className="animate-spin" size={20} /> : <Camera size={20} />}
-                  {isLoadingCamera ? "Iniciando Cámara..." : "Activar Cámara"}
-                </button>
-              </div>
-            ) : !visitData.fotoAntes ? (
-              <div className="relative bg-black rounded-xl overflow-hidden">
-                <video
-                  ref={videoRef}
-                  className="w-full h-80 object-cover"
-                  playsInline
-                  muted
-                />
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
-                  <button
-                    onClick={() => stopCamera()}
-                    className="bg-red-600 text-white px-6 py-3 rounded-full font-bold hover:bg-red-700"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={() => capturePhoto("antes")}
-                    className="bg-white text-gray-900 px-6 py-3 rounded-full font-bold hover:bg-gray-100"
-                  >
-                    📸 Capturar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="relative bg-gray-100 rounded-xl overflow-hidden">
-                <img
-                  src={visitData.fotoAntes.url}
-                  alt="Foto Antes"
-                  className="w-full h-80 object-contain"
-                />
-                <button
-                  onClick={() => retakePhoto("antes")}
-                  className="absolute top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                >
-                  <RotateCcw size={18} />
-                  Retomar
-                </button>
-              </div>
-            )}
-          </div>
+          <CameraCapture
+            onCapture={handleFotoAntesCapture}
+            label="Foto ANTES"
+            required={true}
+            initialImage={visitData.fotoAntes?.base64 || null}
+          />
         )}
 
         {/* Paso 4: Foto DESPUÉS */}
         {currentStep === 4 && (
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-              <Camera className="text-purple-600" size={28} />
-              Foto DESPUÉS
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Toma una foto del resultado después de realizar la visita
-            </p>
-
-            {!visitData.fotoDespues && !videoRef.current?.srcObject ? (
-              <div className="text-center py-12">
-                <Camera className="mx-auto mb-4 text-gray-300" size={64} />
-                <button
-                  onClick={startCamera}
-                  disabled={isLoadingCamera}
-                  className="bg-purple-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-purple-700 inline-flex items-center gap-2"
-                >
-                  {isLoadingCamera ? <Loader2 className="animate-spin" size={20} /> : <Camera size={20} />}
-                  {isLoadingCamera ? "Iniciando Cámara..." : "Activar Cámara"}
-                </button>
-              </div>
-            ) : !visitData.fotoDespues ? (
-              <div className="relative bg-black rounded-xl overflow-hidden">
-                <video
-                  ref={videoRef}
-                  className="w-full h-80 object-cover"
-                  playsInline
-                  muted
-                />
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
-                  <button
-                    onClick={() => stopCamera()}
-                    className="bg-red-600 text-white px-6 py-3 rounded-full font-bold hover:bg-red-700"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={() => capturePhoto("despues")}
-                    className="bg-white text-gray-900 px-6 py-3 rounded-full font-bold hover:bg-gray-100"
-                  >
-                    📸 Capturar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="relative bg-gray-100 rounded-xl overflow-hidden">
-                <img
-                  src={visitData.fotoDespues.url}
-                  alt="Foto Después"
-                  className="w-full h-80 object-contain"
-                />
-                <button
-                  onClick={() => retakePhoto("despues")}
-                  className="absolute top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                >
-                  <RotateCcw size={18} />
-                  Retomar
-                </button>
-              </div>
-            )}
-          </div>
+          <CameraCapture
+            onCapture={handleFotoDespuesCapture}
+            label="Foto DESPUÉS"
+            required={true}
+            initialImage={visitData.fotoDespues?.base64 || null}
+          />
         )}
 
         {/* Paso 5: Resumen */}
@@ -745,26 +603,28 @@ export default function NuevaVisitaPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-gray-600 mb-2">Foto ANTES</h3>
-                  <img
-                    src={visitData.fotoAntes?.url}
-                    alt="Foto Antes"
-                    className="w-full h-40 object-cover rounded-lg"
-                  />
+                  {visitData.fotoAntes && (
+                    <img
+                      src={visitData.fotoAntes.url}
+                      alt="Foto Antes"
+                      className="w-full h-40 object-cover rounded-lg"
+                    />
+                  )}
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-600 mb-2">Foto DESPUÉS</h3>
-                  <img
-                    src={visitData.fotoDespues?.url}
-                    alt="Foto Después"
-                    className="w-full h-40 object-cover rounded-lg"
-                  />
+                  {visitData.fotoDespues && (
+                    <img
+                      src={visitData.fotoDespues.url}
+                      alt="Foto Después"
+                      className="w-full h-40 object-cover rounded-lg"
+                    />
+                  )}
                 </div>
               </div>
             </div>
           </div>
         )}
-
-        <canvas ref={canvasRef} className="hidden" />
 
         {/* Error Message */}
         {error && (
