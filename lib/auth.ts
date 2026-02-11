@@ -3,7 +3,7 @@ import { apiFetch, setAuthToken, removeAuthToken, ApiError } from './api';
 
 // Tipos de datos
 export interface LoginRequest {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -40,7 +40,7 @@ export async function login(username: string, password: string): Promise<LoginRe
   try {
     const response = await apiFetch<LoginResponse>('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ email: username, password }),
     });
     
     // Guardar token en localStorage y cookies
