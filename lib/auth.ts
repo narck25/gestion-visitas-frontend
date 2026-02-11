@@ -232,7 +232,13 @@ export function isAuthenticated(): boolean {
 }
 
 // Función para obtener información del usuario desde localStorage
-export function getUserInfo(): { username: string; name: string; role: string } | null {
+export function getUserInfo(): { 
+  id: string | number; 
+  username: string; 
+  name: string; 
+  role: string;
+  email?: string;
+} | null {
   if (typeof window === 'undefined') {
     return null;
   }
@@ -243,9 +249,11 @@ export function getUserInfo(): { username: string; name: string; role: string } 
     try {
       const userData = JSON.parse(userJson);
       return {
+        id: userData.id || userData.userId || 0,
         username: userData.username || userData.email || '',
         name: userData.name || '',
         role: userData.role || 'USER',
+        email: userData.email,
       };
     } catch (error) {
       console.warn('Error al parsear user de localStorage:', error);
@@ -267,9 +275,11 @@ export function getUserInfo(): { username: string; name: string; role: string } 
     const normalizedRole = decoded.role ? decoded.role.toUpperCase() : 'USER';
     
     return {
+      id: decoded.id || decoded.userId || 0,
       username: decoded.username || decoded.email || '',
       name: decoded.name || '',
       role: normalizedRole,
+      email: decoded.email,
     };
   } catch (error) {
     console.error('Error al decodificar token:', error);

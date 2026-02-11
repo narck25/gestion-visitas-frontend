@@ -9,7 +9,7 @@ import { getUserInfo } from "@/lib/auth";
 
 // Tipos de datos
 interface UserProfile {
-  id: number;
+  id: string | number;
   username: string;
   name: string;
   email?: string;
@@ -51,21 +51,21 @@ export default function MiPerfilPage() {
   const loadProfile = () => {
     const userInfo = getUserInfo();
     if (userInfo) {
-      // Simular datos adicionales (en una implementación real, estos vendrían de una API)
+      // Usar datos reales del usuario desde localStorage/JWT
       const userProfile: UserProfile = {
-        id: 1, // Esto debería venir del token o API
+        id: userInfo.id, // Usar el ID real del usuario
         username: userInfo.username,
         name: userInfo.name,
-        email: `${userInfo.username}@example.com`, // Ejemplo
+        email: userInfo.email, // Usar el email real del usuario
         role: userInfo.role,
-        createdAt: "2024-01-01", // Ejemplo
-        updatedAt: "2024-01-01", // Ejemplo
+        createdAt: new Date().toISOString().split('T')[0], // Fecha actual como ejemplo
+        updatedAt: new Date().toISOString().split('T')[0], // Fecha actual como ejemplo
       };
       
       setProfile(userProfile);
       setFormData({
         name: userInfo.name,
-        email: `${userInfo.username}@example.com`,
+        email: userInfo.email || "",
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
@@ -207,8 +207,11 @@ export default function MiPerfilPage() {
   const getRoleDisplay = (role: string) => {
     const roles: Record<string, string> = {
       admin: "Administrador",
+      ADMIN: "Administrador",
       promotor: "Promotor",
+      PROMOTOR: "Promotor",
       user: "Usuario",
+      USER: "Usuario",
     };
     return roles[role] || role;
   };
