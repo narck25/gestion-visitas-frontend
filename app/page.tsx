@@ -208,7 +208,7 @@ export default function Home() {
             >
               📸 Demo Captura
             </Link>
-            {userInfo?.role === 'admin' && (
+            {userInfo?.role === 'ADMIN' && (
               <Link 
                 href="/admin" 
                 className="px-8 py-4 bg-purple-600 text-white text-lg font-semibold rounded-xl hover:bg-purple-700 transition-colors shadow-lg"

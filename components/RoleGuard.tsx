@@ -42,9 +42,9 @@ export default function RoleGuard({
         let access = true;
         
         if (adminOnly) {
-          access = role === 'admin';
+          access = role === 'ADMIN';
         } else if (promotorOnly) {
-          access = role === 'promotor' || role === 'user';
+          access = role === 'PROMOTOR' || role === 'USER';
         } else if (requiredRole) {
           if (Array.isArray(requiredRole)) {
             access = hasAnyRole(requiredRole);

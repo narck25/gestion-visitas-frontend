@@ -58,6 +58,31 @@ export async function login(username: string, password: string): Promise<LoginRe
         localStorage.setItem('accessToken', accessToken);
         // También guardar como auth_token para compatibilidad
         localStorage.setItem('auth_token', accessToken);
+        
+        // Decodificar el token JWT para obtener información del usuario
+        try {
+          const tokenParts = accessToken.split('.');
+          if (tokenParts.length === 3) {
+            const payload = JSON.parse(atob(tokenParts[1]));
+            
+            // Normalizar rol a mayúsculas
+            const normalizedRole = payload.role ? payload.role.toUpperCase() : 'USER';
+            
+            // Guardar información del usuario en localStorage
+            const userData = {
+              id: payload.id || payload.userId || 0,
+              email: payload.email || payload.username || username,
+              role: normalizedRole,
+              name: payload.name || '',
+              username: payload.username || username,
+            };
+            
+            localStorage.setItem('user', JSON.stringify(userData));
+            console.log('Información del usuario guardada:', userData);
+          }
+        } catch (decodeError) {
+          console.warn('Error al decodificar token JWT:', decodeError);
+        }
       }
       
       // Guardar refreshToken en localStorage
@@ -206,12 +231,28 @@ export function isAuthenticated(): boolean {
   return false;
 }
 
-// Función para obtener información del usuario desde el token
+// Función para obtener información del usuario desde localStorage
 export function getUserInfo(): { username: string; name: string; role: string } | null {
   if (typeof window === 'undefined') {
     return null;
   }
   
+  // Primero intentar obtener del objeto user en localStorage
+  const userJson = localStorage.getItem('user');
+  if (userJson) {
+    try {
+      const userData = JSON.parse(userJson);
+      return {
+        username: userData.username || userData.email || '',
+        name: userData.name || '',
+        role: userData.role || 'USER',
+      };
+    } catch (error) {
+      console.warn('Error al parsear user de localStorage:', error);
+    }
+  }
+  
+  // Fallback: intentar decodificar del token
   const token = localStorage.getItem('auth_token');
   if (!token) {
     return null;
@@ -222,10 +263,13 @@ export function getUserInfo(): { username: string; name: string; role: string } 
     const payload = token.split('.')[1];
     const decoded = JSON.parse(atob(payload));
     
+    // Normalizar rol a mayúsculas
+    const normalizedRole = decoded.role ? decoded.role.toUpperCase() : 'USER';
+    
     return {
-      username: decoded.username || '',
+      username: decoded.username || decoded.email || '',
       name: decoded.name || '',
-      role: decoded.role || 'user',
+      role: normalizedRole,
     };
   } catch (error) {
     console.error('Error al decodificar token:', error);
@@ -236,13 +280,16 @@ export function getUserInfo(): { username: string; name: string; role: string } 
 // Función para verificar si el usuario es administrador
 export function isAdmin(): boolean {
   const userInfo = getUserInfo();
-  return userInfo?.role === 'admin';
+  // Comparar con 'ADMIN' en mayúsculas
+  return userInfo?.role === 'ADMIN';
 }
 
 // Función para verificar si el usuario es promotor
 export function isPromotor(): boolean {
   const userInfo = getUserInfo();
-  return userInfo?.role === 'promotor' || userInfo?.role === 'user';
+  const role = userInfo?.role || '';
+  // Comparar con roles en mayúsculas
+  return role === 'PROMOTOR' || role === 'USER' || role === 'PROMOTOR';
 }
 
 // Función para obtener el rol del usuario
@@ -254,13 +301,19 @@ export function getUserRole(): string | null {
 // Función para verificar si el usuario tiene un rol específico
 export function hasRole(role: string): boolean {
   const userInfo = getUserInfo();
-  return userInfo?.role === role;
+  // Normalizar ambos roles a mayúsculas para comparación
+  const userRole = userInfo?.role || '';
+  const targetRole = role.toUpperCase();
+  return userRole === targetRole;
 }
 
 // Función para verificar si el usuario tiene alguno de los roles especificados
 export function hasAnyRole(roles: string[]): boolean {
   const userInfo = getUserInfo();
-  return roles.includes(userInfo?.role || '');
+  const userRole = userInfo?.role || '';
+  // Normalizar roles a mayúsculas para comparación
+  const normalizedRoles = roles.map(role => role.toUpperCase());
+  return normalizedRoles.includes(userRole);
 }
 
 // Función para validar credenciales
