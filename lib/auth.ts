@@ -8,14 +8,20 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
-  user: {
-    id: number;
-    username: string;
-    name: string;
-    role: string;
+  success: boolean;
+  data: {
+    tokens: {
+      accessToken: string;
+      refreshToken: string;
+    };
+    user?: {
+      id: number;
+      username: string;
+      name: string;
+      role: string;
+    };
   };
-  message: string;
+  message?: string;
 }
 
 export interface RegisterRequest {
@@ -43,14 +49,33 @@ export async function login(username: string, password: string): Promise<LoginRe
       body: JSON.stringify({ email: username, password }),
     });
     
-    // Guardar token en localStorage y cookies
-    if (response.token) {
-      setAuthToken(response.token);
+    // Guardar tokens en localStorage y cookies
+    if (response.success && response.data?.tokens) {
+      const { accessToken, refreshToken } = response.data.tokens;
+      
+      // Guardar accessToken en localStorage
+      if (accessToken) {
+        localStorage.setItem('accessToken', accessToken);
+        // También guardar como auth_token para compatibilidad
+        localStorage.setItem('auth_token', accessToken);
+      }
+      
+      // Guardar refreshToken en localStorage
+      if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken);
+      }
       
       // También guardar en cookies para el middleware
-      if (typeof document !== 'undefined') {
-        document.cookie = `auth_token=${response.token}; path=/; max-age=86400; SameSite=Strict`;
+      if (typeof document !== 'undefined' && accessToken) {
+        document.cookie = `auth_token=${accessToken}; path=/; max-age=86400; SameSite=Strict`;
       }
+      
+      console.log('Tokens guardados correctamente:', {
+        accessToken: accessToken ? 'SÍ' : 'NO',
+        refreshToken: refreshToken ? 'SÍ' : 'NO'
+      });
+    } else {
+      console.warn('Login exitoso pero sin tokens en la respuesta:', response);
     }
     
     return response;
@@ -158,21 +183,27 @@ export function isAuthenticated(): boolean {
     return false;
   }
   
-  // Primero intentar obtener de localStorage
-  const localStorageToken = localStorage.getItem('auth_token');
-  
-  // Si no hay en localStorage, intentar obtener de cookies
-  if (!localStorageToken) {
-    const cookieToken = getTokenFromCookies();
-    if (cookieToken) {
-      // Si hay token en cookies pero no en localStorage, sincronizar
-      localStorage.setItem('auth_token', cookieToken);
-      return true;
-    }
-    return false;
+  // Primero intentar obtener accessToken de localStorage
+  const accessToken = localStorage.getItem('accessToken');
+  if (accessToken) {
+    return true;
   }
   
-  return true;
+  // Si no hay accessToken, intentar obtener auth_token para compatibilidad
+  const authToken = localStorage.getItem('auth_token');
+  if (authToken) {
+    return true;
+  }
+  
+  // Si no hay en localStorage, intentar obtener de cookies
+  const cookieToken = getTokenFromCookies();
+  if (cookieToken) {
+    // Si hay token en cookies pero no en localStorage, sincronizar
+    localStorage.setItem('auth_token', cookieToken);
+    return true;
+  }
+  
+  return false;
 }
 
 // Función para obtener información del usuario desde el token

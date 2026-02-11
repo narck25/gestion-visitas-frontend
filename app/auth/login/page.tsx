@@ -55,8 +55,9 @@ function LoginContent() {
       console.log("Intentando login con usuario:", loginData.username);
       const response = await login(loginData.username, loginData.password);
       
-      console.log("Login exitoso, token recibido:", response.token ? "SÍ" : "NO");
-      console.log("Token guardado en localStorage:", localStorage.getItem('auth_token'));
+      console.log("Login exitoso, success:", response.success);
+      console.log("AccessToken guardado:", localStorage.getItem('accessToken') ? "SÍ" : "NO");
+      console.log("RefreshToken guardado:", localStorage.getItem('refreshToken') ? "SÍ" : "NO");
       
       // Pequeño delay para asegurar que el token se guarde
       setTimeout(() => {

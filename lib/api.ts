@@ -14,7 +14,8 @@ export function getAuthToken(): string | null {
   if (typeof window === 'undefined') {
     return null;
   }
-  return localStorage.getItem('auth_token');
+  // Primero intentar obtener accessToken, luego auth_token para compatibilidad
+  return localStorage.getItem('accessToken') || localStorage.getItem('auth_token');
 }
 
 // Función para guardar el token de autenticación
@@ -24,6 +25,8 @@ export function setAuthToken(token: string): void {
     return;
   }
   console.log(`setAuthToken: saving token to localStorage, token length: ${token.length}`);
+  localStorage.setItem('accessToken', token);
+  // También guardar como auth_token para compatibilidad
   localStorage.setItem('auth_token', token);
   console.log('setAuthToken: token saved successfully');
 }
@@ -33,6 +36,8 @@ export function removeAuthToken(): void {
   if (typeof window === 'undefined') {
     return;
   }
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
   localStorage.removeItem('auth_token');
 }
 
