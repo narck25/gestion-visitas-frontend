@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Simple - Sistema de Roles</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background: #0070f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #0051cc;
+        }
+        
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            background: #f5f5f5;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Prueba Simple del Sistema de Roles</h1>
+    
+    <div class="test-section">
+        <h3>1. Verificar Servidor</h3>
+        <button onclick="checkServer()">Verificar Servidor</button>
+        <div id="server-result" class="result">Esperando...</div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Simular Usuario</h3>
+        <button onclick="simulateUser('admin')">Simular Admin</button>
+        <button onclick="simulateUser('promotor')">Simular Promotor</button>
+        <button onclick="simulateUser('user')">Simular Usuario</button>
+        <button onclick="clearUser()">Limpiar Usuario</button>
+        <div id="user-result" class="result">No hay usuario simulado</div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Probar Rutas Manualmente</h3>
+        <p>Abre estas URLs en nuevas pestañas:</p>
+        <ul>
+            <li><a href="http://localhost:3000/" target="_blank">Página Principal (/)</a></li>
+            <li><a href="http://localhost:3000/admin" target="_blank">Panel Admin (/admin)</a></li>
+            <li><a href="http://localhost:3000/nueva-visita" target="_blank">Nueva Visita (/nueva-visita)</a></li>
+            <li><a href="http://localhost:3000/auth/login" target="_blank">Login (/auth/login)</a></li>
+        </ul>
+        <p><strong>Instrucciones:</strong></p>
+        <ol>
+            <li>Simula un usuario (ej: Admin)</li>
+            <li>Abre /admin en nueva pestaña</li>
+            <li>Deberías ver el panel de administración</li>
+            <li>Simula un usuario Promotor</li>
+            <li>Abre /admin en nueva pestaña</li>
+            <li>Deberías ser redirigido a /unauthorized</li>
+        </ol>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Estado Actual</h3>
+        <div id="status-result" class="result">
+            Servidor: Desconocido<br>
+            Usuario: No autenticado<br>
+            Rol: Ninguno
+        </div>
+    </div>
+    
+    <script>
+        let currentUser = null;
+        
+        function updateStatus() {
+            const statusElement = document.getElementById('status-result');
+            const serverStatus = navigator.onLine ? 'En línea' : 'Desconectado';
+            const userStatus = currentUser ? `Autenticado (${currentUser.role})` : 'No autenticado';
+            const roleStatus = currentUser ? currentUser.role : 'Ninguno';
+            
+            statusElement.innerHTML = `
+                Servidor: ${serverStatus}<br>
+                Usuario: ${userStatus}<br>
+                Rol: ${roleStatus}<br>
+                LocalStorage: ${localStorage.getItem('auth_token') ? 'Token presente' : 'Sin token'}
+            `;
+        }
+        
+        function checkServer() {
+            const resultElement = document.getElementById('server-result');
+            resultElement.textContent = 'Verificando...';
+            resultElement.className = 'result';
+            
+            fetch('http://localhost:3000/health')
+                .then(response => {
+                    if (response.ok) {
+                        resultElement.textContent = '✅ Servidor en línea y respondiendo';
+                        resultElement.className = 'result success';
+                    } else {
+                        resultElement.textContent = `❌ Servidor error: ${response.status}`;
+                        resultElement.className = 'result error';
+                    }
+                })
+                .catch(error => {
+                    resultElement.textContent = `❌ Error: ${error.message}`;
+                    resultElement.className = 'result error';
+                })
+                .finally(updateStatus);
+        }
+        
+        function simulateUser(role) {
+            currentUser = { role: role };
+            
+            // Crear token simulado
+            const fakeToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3QiLCJuYW1lIjoidGVzdCIsInJvbGUiOiIkdXJsZSIsImlhdCI6MTcwNzUwMDAwMCwiZXhwIjoxNzA3NTg2NDAwfS5mYWtl`;
+            const tokenWithRole = fakeToken.replace('$role', role);
+            
+            // Guardar en localStorage
+            localStorage.setItem('auth_token', tokenWithRole);
+            localStorage.setItem('user', JSON.stringify({
+                id: 1,
+                username: 'test',
+                name: 'Usuario de Prueba',
+                role: role,
+                email: 'test@example.com'
+            }));
+            
+            const resultElement = document.getElementById('user-result');
+            resultElement.textContent = `✅ Usuario simulado: ${role}\nToken guardado en localStorage`;
+            resultElement.className = 'result success';
+            
+            updateStatus();
+        }
+        
+        function clearUser() {
+            currentUser = null;
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+            
+            const resultElement = document.getElementById('user-result');
+            resultElement.textContent = '✅ Usuario limpiado\nLocalStorage vaciado';
+            resultElement.className = 'result success';
+            
+            updateStatus();
+        }
+        
+        // Inicializar
+        updateStatus();
+        
+        // Verificar si hay usuario en localStorage
+        const userJson = localStorage.getItem('user');
+        if (userJson) {
+            try {
+                const userData = JSON.parse(userJson);
+                currentUser = { role: userData.role };
+                document.getElementById('user-result').textContent = `Usuario cargado: ${userData.role}`;
+            } catch (e) {
+                console.error('Error cargando usuario:', e);
+            }
+        }
+    </script>
+</body>
+</html>

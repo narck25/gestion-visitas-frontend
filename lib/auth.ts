@@ -299,7 +299,7 @@ export function isPromotor(): boolean {
   const userInfo = getUserInfo();
   const role = userInfo?.role || '';
   // Comparar con roles en mayúsculas
-  return role === 'PROMOTOR' || role === 'USER' || role === 'PROMOTOR';
+  return role === 'PROMOTOR' || role === 'USER';
 }
 
 // Función para obtener el rol del usuario

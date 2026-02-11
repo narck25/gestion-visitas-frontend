@@ -186,7 +186,9 @@ function MisVisitasContent() {
       let visitasFiltradas = [...visitasEjemplo];
       
       // Si no es admin, filtrar solo las visitas del usuario actual
-      if (user?.role !== 'admin') {
+      // Normalizar el rol a mayúsculas para comparar
+      const userRole = user?.role?.toUpperCase();
+      if (userRole !== 'ADMIN') {
         // En una implementación real, aquí se filtraría por userId
         // Para la demo, asignamos algunas visitas al usuario actual
         const userId = 101; // ID del usuario actual (simulado)
@@ -271,6 +273,12 @@ function MisVisitasContent() {
     }
   };
 
+  // Función para normalizar y verificar si el usuario es admin
+  const isUserAdmin = () => {
+    const userRole = userInfo?.role?.toUpperCase();
+    return userRole === 'ADMIN';
+  };
+
   const estadisticas = {
     total: visitas.length,
     completadas: visitas.filter(v => v.estado === 'completada').length,
@@ -304,7 +312,7 @@ function MisVisitasContent() {
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Mis Visitas</h1>
                 <p className="text-sm text-gray-600">
-                  {userInfo?.role === 'admin' ? 'Todas las visitas del sistema' : 'Historial de tus visitas'}
+                  {isUserAdmin() ? 'Todas las visitas del sistema' : 'Historial de tus visitas'}
                 </p>
               </div>
             </div>
@@ -385,7 +393,7 @@ function MisVisitasContent() {
             <div>
               <h2 className="text-xl font-bold text-gray-900">Historial de Visitas</h2>
               <p className="text-gray-600">
-                {userInfo?.role === 'admin' 
+                {isUserAdmin() 
                   ? 'Todas las visitas registradas en el sistema' 
                   : 'Tus visitas registradas'}
               </p>
@@ -453,7 +461,7 @@ function MisVisitasContent() {
               {filterFecha && ` • Fecha: ${formatFecha(filterFecha)}`}
             </p>
             
-            {userInfo?.role === 'admin' && (
+            {isUserAdmin() && (
               <div className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
                 <Eye size={14} />
                 Vista de Administrador
@@ -586,10 +594,10 @@ function MisVisitasContent() {
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
             <h3 className="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2">
               <Eye size={20} />
-              {userInfo?.role === 'admin' ? 'Vista de Administrador' : 'Tu Historial'}
+              {isUserAdmin() ? 'Vista de Administrador' : 'Tu Historial'}
             </h3>
             <p className="text-blue-800 mb-3">
-              {userInfo?.role === 'admin' 
+              {isUserAdmin() 
                 ? 'Como administrador, puedes ver todas las visitas del sistema. Usa los filtros para encontrar información específica.'
                 : 'Esta es tu historia de visitas. Solo puedes ver las visitas que has registrado tú mismo.'
               }

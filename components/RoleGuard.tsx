@@ -33,31 +33,35 @@ export default function RoleGuard({
       const authStatus = isAuthenticated();
       setIsAuth(authStatus);
       
-      if (authStatus) {
-        const userInfo = getUserInfo();
-        const role = userInfo?.role || null;
-        setUserRole(role);
-        
-        // Verificar acceso basado en roles
-        let access = true;
-        
-        if (adminOnly) {
-          access = role === 'ADMIN';
-        } else if (promotorOnly) {
-          access = role === 'PROMOTOR' || role === 'USER';
-        } else if (requiredRole) {
-          if (Array.isArray(requiredRole)) {
-            access = hasAnyRole(requiredRole);
-          } else {
-            access = hasRole(requiredRole);
+        if (authStatus) {
+          const userInfo = getUserInfo();
+          const role = userInfo?.role || null;
+          setUserRole(role);
+          
+          // Verificar acceso basado en roles
+          let access = true;
+          
+          if (adminOnly) {
+            // Normalizar rol a mayúsculas para comparación
+            const normalizedRole = role?.toUpperCase();
+            access = normalizedRole === 'ADMIN';
+          } else if (promotorOnly) {
+            // Normalizar rol a mayúsculas para comparación
+            const normalizedRole = role?.toUpperCase();
+            access = normalizedRole === 'PROMOTOR' || normalizedRole === 'USER';
+          } else if (requiredRole) {
+            if (Array.isArray(requiredRole)) {
+              access = hasAnyRole(requiredRole);
+            } else {
+              access = hasRole(requiredRole);
+            }
           }
+          
+          setHasAccess(access);
+        } else {
+          setUserRole(null);
+          setHasAccess(false);
         }
-        
-        setHasAccess(access);
-      } else {
-        setUserRole(null);
-        setHasAccess(false);
-      }
       
       setIsChecking(false);
 

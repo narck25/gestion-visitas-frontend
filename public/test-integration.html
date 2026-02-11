@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Integración - Sistema de Roles</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #1a1a1a;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .test-card {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .test-card h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .test-button {
+            padding: 12px 24px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        
+        .test-button:hover {
+            background: #2980b9;
+        }
+        
+        .test-button.admin {
+            background: #e74c3c;
+        }
+        
+        .test-button.admin:hover {
+            background: #c0392b;
+        }
+        
+        .test-button.promotor {
+            background: #2ecc71;
+        }
+        
+        .test-button.promotor:hover {
+            background: #27ae60;
+        }
+        
+        .test-button.user {
+            background: #95a5a6;
+        }
+        
+        .test-button.user:hover {
+            background: #7f8c8d;
+        }
+        
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            background: white;
+            border: 1px solid #ddd;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .success {
+            border-color: #2ecc71;
+            background: #d5f4e6;
+        }
+        
+        .error {
+            border-color: #e74c3c;
+            background: #fadbd8;
+        }
+        
+        .info {
+            border-color: #3498db;
+            background: #d6eaf8;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-online {
+            background: #2ecc71;
+            box-shadow: 0 0 8px #2ecc71;
+        }
+        
+        .status-offline {
+            background: #e74c3c;
+        }
+        
+        .status-checking {
+            background: #f39c12;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .instructions {
+            background: #fff8e1;
+            border: 2px solid #ffd54f;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .instructions h3 {
+            color: #ff8f00;
+            margin-top: 0;
+        }
+        
+        .instructions ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Prueba de Integración del Sistema de Roles</h1>
+        <p class="subtitle">Verifica que el middleware y los componentes funcionen correctamente juntos</p>
+        
+        <div class="test-card">
+            <h3>Estado del Servidor</h3>
+            <p>
+                <span class="status-indicator status-online"></span>
+                Servidor Next.js: <strong id="server-status">Verificando...</strong>
+            </p>
+            <div id="server-result" class="result info">
+                Esperando verificación...
+            </div>
+        </div>
+        
+        <div class="test-card">
+            <h3>Prueba de Rutas Públicas</h3>
+            <p>Estas rutas deben ser accesibles sin autenticación:</p>
+            
+            <button class="test-button" onclick="testRoute('/')">Probar Página Principal (/)</button>
+            <button class="test-button" onclick="testRoute('/auth/login')">Probar Login (/auth/login)</button>
+            <button class="test-button" onclick="testRoute('/auth/register')">Probar Registro (/auth/register)</button>
+            
+            <div id="public-routes-result" class="result"></div>
+        </div>
+        
+        <div class="test-card">
+            <h3>Prueba de Rutas Protegidas</h3>
+            <p>Estas rutas requieren autenticación:</p>
+            
+            <button class="test-button" onclick="testProtectedRoute('/nueva-visita')">Probar /nueva-visita</button>
+            <button class="test-button" onclick="testProtectedRoute('/mis-visitas')">Probar /mis-visitas</button>
+            <button class="test-button" onclick="testProtectedRoute('/visitas')">Probar /visitas</button>
+            
+            <div id="protected-routes-result" class="result"></div>
+        </div>
+        
+        <div class="test-card">
+            <h3>Prueba de Ruta de Administración</h3>
+            <p>Esta ruta requiere rol de administrador:</p>
+            
+            <button class="test-button admin" onclick="testAdminRoute()">Probar /admin</button>
+            
+            <div id="admin-route-result" class="result"></div>
+        </div>
+        
+        <div class="test-card">
+            <h3>Simulación de Usuarios</h3>
+            <p>Simula diferentes usuarios para probar permisos:</p>
+            
+            <button class="test-button admin" onclick="simulateUser('admin')">Simular Usuario Admin</button>
+            <button class="test-button promotor" onclick="simulateUser('promotor')">Simular Usuario Promotor</button>
+            <button class="test-button user" onclick="simulateUser('user')">Simular Usuario Básico</button>
+            <button class="test-button" onclick="clearUser()">Limpiar Simulación</button>
+            
+            <div id="user-simulation-result" class="result"></div>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 Instrucciones para Probar</h3>
+            <ul>
+                <li><strong>Paso 1:</strong> Verifica que el servidor esté en línea (arriba)</li>
+                <li><strong>Paso 2:</strong> Prueba las rutas públicas para asegurarte de que sean accesibles</li>
+                <li><strong>Paso 3:</strong> Simula un usuario (admin, promotor o básico)</li>
+                <li><strong>Paso 4:</strong> Prueba las rutas protegidas con el usuario simulado</li>
+                <li><strong>Paso 5:</strong> Verifica que /admin solo sea accesible para usuarios admin</li>
+                <li><strong>Paso 6:</strong> Limpia la simulación y prueba sin usuario</li>
+            </ul>
+            <p><strong>Nota:</strong> Esta es una prueba de integración que verifica el flujo completo del sistema.</p>
+        </div>
+    </div>
+    
+    <script>
+        // Estado global
+        let currentUser = null;
+        let serverOnline = false;
+        
+        // Función para mostrar resultados
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `result ${type}`;
+        }
+        
+        // Función para verificar el estado del servidor
+        async function checkServerStatus() {
+            const statusElement = document.getElementById('server-status');
+            const resultElement = document.getElementById('server-result');
+            
+            statusElement.textContent = 'Verificando...';
+            statusElement.style.color = '#f39c12';
+            showResult('server-result', '🔍 Verificando conexión con el servidor...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:3000/health', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    serverOnline = true;
+                    statusElement.textContent = 'EN LÍNEA ✅';
+                    statusElement.style.color = '#2ecc71';
+                    showResult('server-result', '✅ Servidor en línea y respondiendo correctamente\n\nURL: http://localhost:3000\nEstado: 200 OK', 'success');
+                } else {
+                    serverOnline = false;
+                    statusElement.textContent = 'ERROR ❌';
+                    statusElement.style.color = '#e74c3c';
+                    showResult('server-result', `❌ Servidor respondió con error: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                serverOnline = false;
+                statusElement.textContent = 'DESCONECTADO ❌';
+                statusElement.style.color = '#e74c3c';
+                showResult('server-result', `❌ No se pudo conectar al servidor: ${error.message}\n\nAsegúrate de que el servidor Next.js esté ejecutándose:\nnpm run dev`, 'error');
+            }
+        }
+        
+        // Función para probar una ruta pública
+        async function testRoute(path) {
+            if (!serverOnline) {
+                showResult('public-routes-result', '❌ El servidor no está en línea. Verifica el estado primero.', 'error');
+                return;
+            }
+            
+            showResult('public-routes-result', `🔍 Probando ruta: ${path}...`, 'info');
+            
+            try {
+                const response = await fetch(`http://localhost:3000${path}`, {
+                    method: 'GET',
+                    redirect: 'manual' // No seguir redirecciones automáticamente
+                });
+                
+                let result = `Ruta: ${path}\n`;
+                result += `Estado: ${response.status} ${response.statusText}\n`;
+                
+                if (response.status === 200) {
+                    result += '✅ Acceso PERMITIDO\n';
+                    result += 'La ruta es accesible sin autenticación';
+                    showResult('public-routes-result', result, 'success');
+                } else if (response.status >= 300 && response.status < 400) {
+                    const location = response.headers.get('location');
+                    result += `⚠ Redirección detectada\n`;
+                    result += `Redirigiendo a: ${location || 'Desconocido'}\n`;
+                    result += 'Esto puede ser normal para rutas que requieren autenticación';
+                    showResult('public-routes-result', result, 'info');
+                } else {
+                    result += '❌ Error de acceso\n';
+                    result += 'La ruta no está disponible';
+                    showResult('public-routes-result', result, 'error');
+                }
+            } catch (error) {
+                showResult('public-routes-result', `❌ Error al probar ruta: ${error.message}`, 'error');
+            }
+        }
+        
+        // Función para probar una ruta protegida
+        async function testProtectedRoute(path) {
+            if (!serverOnline) {
+                showResult('protected-routes-result', '❌ El servidor no está en línea. Verifica el estado primero.', 'error');
+                return;
+            }
+            
+            showResult('protected-routes-result', `🔍 Probando ruta protegida: ${path}...`, 'info');
+            
+            try {
+                const response = await fetch(`http://localhost:3000${path}`, {
+                    method: 'GET',
+                    redirect: 'manual'
+                });
+                
+                let result = `Ruta: ${path}\n`;
+                result += `Estado: ${response.status} ${response.statusText}\n`;
+                
+                if (response.status === 200) {
+                    result += '✅ Acceso PERMITIDO\n';
+                    result += 'El usuario actual tiene acceso a esta ruta';
+                    showResult('protected-routes-result', result, 'success');
+                } else if (response.status === 302 || response.status === 307) {
+                    const location = response.headers.get('location');
+                    result += `🔒 Acceso DENEGADO\n`;
+                    result += `Redirigiendo a: ${location || '/auth/login'}\n`;
+                    result += 'Esto es normal si no hay usuario autenticado';
+                    showResult('protected-routes-result', result, currentUser ? 'error' : 'info');
+                } else {
+                    result += `❌ Estado inesperado: ${response.status}\n`;
+                    showResult('protected-routes-result', result, 'error');
+                }
+            } catch (error) {
+                showResult('protected-routes-result', `❌ Error al probar ruta: ${error.message}`, 'error');
+            }
+        }
+        
+        // Función para probar la ruta de administración
+        async function testAdminRoute() {
+            if (!serverOnline) {
+                showResult('admin-route-result', '❌ El servidor no está en línea. Verifica el estado primero.', 'error');
+                return;
+            }
+            
+            showResult('admin-route-result', `🔍 Probando ruta de administración: /admin...`, 'info');
+            
+            try {
+                const response = await fetch('http://localhost:3000/admin', {
+                    method: 'GET',
+                    redirect: 'manual'
+                });
+                
+                let result = `Ruta: /admin\n`;
+                result += `Estado: ${response.status} ${response.statusText}\n`;
+                
+                if (response.status === 200) {
+                    result += '✅ Acceso PERMITIDO\n';
+                    result += 'El usuario actual tiene permisos de administrador';
+                    showResult('admin-route-result', result, 'success');
+                } else if (response.status === 302 || response.status === 307) {
+                    const location = response.headers.get('location');
+                    result += `🔒 Acceso DENEGADO\n`;
+                    result += `Redirigiendo a: ${location || '/unauthorized'}\n`;
+                    
+                    if (currentUser) {
+                        result += `\nUsuario actual: ${currentUser.role}\n`;
+                        result += `Los usuarios con rol "${currentUser.role}" no tienen acceso a /admin`;
+                    } else {
+                        result += '\nNo hay usuario autenticado';
+                    }
+                    
+                    showResult('admin-route-result', result, currentUser ? 'error' : 'info');
+                } else {
+                    result += `❌ Estado inesperado: ${response.status}\n`;
+                    showResult('admin-route-result', result, 'error');
+                }
+            } catch (error) {
+                showResult('admin-route-result', `❌ Error al probar ruta: ${error.message}`, 'error');
+            }
+        }
+        
+        // Función para simular un usuario
+        function simulateUser(role) {
+            currentUser = {
+                role: role,
+                name: role === 'admin' ? 'Administrador' : 
+                      role === 'promotor' ? 'Promotor de Ventas' : 'Usuario Básico',
+                username: role === 'admin' ? 'admin' : 
+                         role === 'promotor' ? 'promotor' : 'usuario'
+            };
+            
+            // Simular almacenamiento en localStorage
+            const fakeToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IiR7Y3VycmVudFVzZXIudXNlcm5hbWV9IiwibmFtZSI6IiR7Y3VycmVudFVzZXIubmFtZX0iLCJyb2xlIjoiJHtjdXJyZW50VXNlci5yb2xlfSIsImlhdCI6MTcwNzUwMDAwMCwiZXhwIjoxNzA3NTg2NDAwfQ.fake-signature`;
+            const tokenWithRole = fakeToken.replace('${currentUser.username}', currentUser.username)
+                                          .replace('${currentUser.name}', currentUser.name)
+                                          .replace('${currentUser.role}', currentUser.role);
+            
+            localStorage.setItem('auth_token', tokenWithRole);
+            
+            const userData = {
+                id: role === 'admin' ? 1 : role === 'promotor' ? 2 : 3,
+                username: currentUser.username,
+                name: currentUser.name,
+                role: role,
+                email: `${role}@example.com`
+            };
+            
+            localStorage.setItem('user', JSON.stringify(userData));
+            
+            let result = `✅ Usuario simulado creado:\n\n`;
+            result += `Rol: ${role}\n`;
+            result += `Nombre: ${currentUser.name}\n`;
+            result += `Usuario: ${currentUser.username}\n`;
+            result += `ID: ${userData.id}\n\n`;
+            result += `Token y datos guardados en localStorage\n`;
+            result += `Ahora puedes probar las rutas protegidas`;
+            
+            showResult('user-simulation-result', result, 'success');
+        }
+        
+        // Función para limpiar usuario simulado
+        function clearUser() {
+            currentUser = null;
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+            
+            showResult('user-simulation-result', '✅ Usuario simulado eliminado\n\nLocalStorage limpiado\nAhora estás como usuario no autenticado', 'success');
+        }
+        
+        // Inicializar
+        checkServerStatus();
+        
+        // Verificar si hay usuario en localStorage al cargar
+        window.addEventListener('DOMContentLoaded', () => {
+            const userJson = localStorage.getItem('user');
+            if (userJson) {
+                try {
+                    const userData = JSON.parse(userJson);
+                    currentUser = {
+                        role: userData.role,
+                        name: userData.name,
+                        username: userData.username
+                    };
+                    
+                    showResult('user-simulation-result', `✅ Usuario cargado desde localStorage:\n\nRol: ${currentUser.role}\nNombre: ${currentUser.name}`, 'info');
+                } catch (error) {
+                    console.error('Error al cargar usuario:', error);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+               

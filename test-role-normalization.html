@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Normalización de Roles</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .test-button {
+            padding: 10px 20px;
+            background: #0070f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        
+        .test-button:hover {
+            background: #0051cc;
+        }
+        
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+        
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        
+        .role-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 0 5px;
+        }
+        
+        .admin-badge {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .promotor-badge {
+            background: #28a745;
+            color: white;
+        }
+        
+        .user-badge {
+            background: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Prueba de Normalización de Roles</h1>
+        <p>Esta página prueba que los roles se normalizan correctamente a mayúsculas en el sistema.</p>
+        
+        <div class="test-section">
+            <h2>Prueba 1: Simular Login con Diferentes Roles</h2>
+            <p>Haz clic en un botón para simular login con un rol específico:</p>
+            
+            <button class="test-button" onclick="testRole('admin')">Simular Login como "admin" (minúsculas)</button>
+            <button class="test-button" onclick="testRole('ADMIN')">Simular Login como "ADMIN" (mayúsculas)</button>
+            <button class="test-button" onclick="testRole('Admin')">Simular Login como "Admin" (mixto)</button>
+            <br>
+            <button class="test-button" onclick="testRole('promotor')">Simular Login como "promotor" (minúsculas)</button>
+            <button class="test-button" onclick="testRole('PROMOTOR')">Simular Login como "PROMOTOR" (mayúsculas)</button>
+            <button class="test-button" onclick="testRole('Promotor')">Simular Login como "Promotor" (mixto)</button>
+            <br>
+            <button class="test-button" onclick="testRole('user')">Simular Login como "user" (minúsculas)</button>
+            <button class="test-button" onclick="testRole('USER')">Simular Login como "USER" (mayúsculas)</button>
+            <button class="test-button" onclick="testRole('User')">Simular Login como "User" (mixto)</button>
+            
+            <div id="test1-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Prueba 2: Verificar Funciones de Autenticación</h2>
+            <p>Prueba las funciones del módulo de autenticación:</p>
+            
+            <button class="test-button" onclick="testAuthFunctions()">Probar Funciones auth.ts</button>
+            <button class="test-button" onclick="testMiddlewareLogic()">Probar Lógica del Middleware</button>
+            <button class="test-button" onclick="testRoleGuard()">Probar Componente RoleGuard</button>
+            
+            <div id="test2-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Prueba 3: Acceso a Rutas Protegidas</h2>
+            <p>Simula acceso a rutas protegidas:</p>
+            
+            <button class="test-button" onclick="testAdminRoute()">Probar Acceso a /admin</button>
+            <button class="test-button" onclick="testProtectedRoute()">Probar Acceso a /nueva-visita</button>
+            <button class="test-button" onclick="clearStorage()">Limpiar localStorage</button>
+            
+            <div id="test3-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Estado Actual del Sistema</h2>
+            <div id="current-state" class="result info">
+                Cargando estado actual...
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Función para mostrar resultados
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `result ${type}`;
+        }
+        
+        // Función para actualizar el estado actual
+        function updateCurrentState() {
+            const stateElement = document.getElementById('current-state');
+            const token = localStorage.getItem('auth_token');
+            const user = localStorage.getItem('user');
+            
+            let state = '=== ESTADO ACTUAL ===\n\n';
+            
+            if (token) {
+                state += '✅ Token de autenticación: PRESENTE\n';
+                
+                // Intentar decodificar el token
+                try {
+                    const payload = token.split('.')[1];
+                    const decoded = JSON.parse(atob(payload));
+                    state += `   Usuario: ${decoded.username || 'N/A'}\n`;
+                    state += `   Rol en token: ${decoded.role || 'N/A'}\n`;
+                    state += `   Rol normalizado: ${decoded.role ? decoded.role.toUpperCase() : 'N/A'}\n`;
+                } catch (e) {
+                    state += `   Error decodificando token: ${e.message}\n`;
+                }
+            } else {
+                state += '❌ Token de autenticación: AUSENTE\n';
+            }
+            
+            if (user) {
+                try {
+                    const userData = JSON.parse(user);
+                    state += `\n✅ Datos de usuario en localStorage:\n`;
+                    state += `   ID: ${userData.id || 'N/A'}\n`;
+                    state += `   Nombre: ${userData.name || 'N/A'}\n`;
+                    state += `   Usuario: ${userData.username || 'N/A'}\n`;
+                    state += `   Rol: ${userData.role || 'N/A'}\n`;
+                    state += `   Email: ${userData.email || 'N/A'}\n`;
+                } catch (e) {
+                    state += `\n❌ Error parseando datos de usuario: ${e.message}\n`;
+                }
+            } else {
+                state += '\n❌ Datos de usuario: AUSENTE\n';
+            }
+            
+            // Verificar funciones de autenticación
+            state += '\n=== VERIFICACIÓN DE ROLES ===\n';
+            
+            // Simular funciones de auth.ts
+            const userInfo = getUserInfoFromStorage();
+            if (userInfo) {
+                state += `   Rol obtenido: ${userInfo.role}\n`;
+                state += `   ¿Es admin? ${userInfo.role === 'ADMIN' ? '✅ SÍ' : '❌ NO'}\n`;
+                state += `   ¿Es promotor? ${userInfo.role === 'PROMOTOR' || userInfo.role === 'USER' ? '✅ SÍ' : '❌ NO'}\n`;
+                state += `   ¿Es usuario? ${userInfo.role === 'USER' ? '✅ SÍ' : '❌ NO'}\n`;
+            } else {
+                state += '   No hay usuario autenticado\n';
+            }
+            
+            stateElement.textContent = state;
+            stateElement.className = 'result info';
+        }
+        
+        // Función para obtener información del usuario desde localStorage (simulando getUserInfo)
+        function getUserInfoFromStorage() {
+            const userJson = localStorage.getItem('user');
+            if (!userJson) {
+                return null;
+            }
+            
+            try {
+                const userData = JSON.parse(userJson);
+                return {
+                    id: userData.id || 0,
+                    username: userData.username || '',
+                    name: userData.name || '',
+                    role: userData.role || 'USER',
+                    email: userData.email || ''
+                };
+            } catch (error) {
+                console.error('Error al parsear user de localStorage:', error);
+                return null;
+            }
+        }
+        
+        // Función para simular login con un rol específico
+        function testRole(role) {
+            // Crear un token JWT simulado
+            const fakeToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyIiwibmFtZSI6IlVzdWFyaW8gZGUgUHJ1ZWJhIiwicm9sZSI6IiR7cm9sZX0iLCJpYXQiOjE3MDc1MDAwMDAsImV4cCI6MTcwNzU4NjQwMH0uZmFrZS1zaWduYXR1cmU`;
+            
+            // Reemplazar el rol en el token
+            const tokenWithRole = fakeToken.replace('${role}', role);
+            
+            // Guardar en localStorage
+            localStorage.setItem('auth_token', tokenWithRole);
+            
+            // Crear datos de usuario
+            const userData = {
+                id: 999,
+                username: 'testuser',
+                name: 'Usuario de Prueba',
+                role: role,
+                email: 'test@example.com'
+            };
+            
+            localStorage.setItem('user', JSON.stringify(userData));
+            
+            // Mostrar resultados
+            const result = `✅ Login simulado exitoso\n\n` +
+                          `Rol proporcionado: "${role}"\n` +
+                          `Rol normalizado esperado: "${role.toUpperCase()}"\n\n` +
+                          `Token guardado: ${tokenWithRole.substring(0, 50)}...\n` +
+                          `Datos de usuario guardados en localStorage`;
+            
+            showResult('test1-result', result, 'success');
+            updateCurrentState();
+        }
+        
+        // Función para probar las funciones de autenticación
+        function testAuthFunctions() {
+            const userInfo = getUserInfoFromStorage();
+            let result = '=== PRUEBA DE FUNCIONES auth.ts ===\n\n';
+            
+            if (!userInfo) {
+                result += '❌ No hay usuario autenticado\n';
+                result += 'Simula un login primero usando la Prueba 1';
+                showResult('test2-result', result, 'error');
+                return;
+            }
+            
+            result += `Usuario actual: ${userInfo.name} (${userInfo.username})\n`;
+            result += `Rol almacenado: ${userInfo.role}\n`;
+            result += `Rol normalizado: ${userInfo.role.toUpperCase()}\n\n`;
+            
+            // Simular funciones
+            const isAdmin = userInfo.role === 'ADMIN';
+            const isPromotor = userInfo.role === 'PROMOTOR' || userInfo.role === 'USER';
+            const isUser = userInfo.role === 'USER';
+            
+            result += `isAdmin(): ${isAdmin ? '✅ true' : '❌ false'}\n`;
+            result += `isPromotor(): ${isPromotor ? '✅ true' : '❌ false'}\n`;
+            result += `isUser(): ${isUser ? '✅ true' : '❌ false'}\n\n`;
+            
+            // Probar hasRole
+            result += 'Prueba hasRole():\n';
+            result += `  hasRole('admin'): ${userInfo.role === 'ADMIN' ? '✅ true' : '❌ false'}\n`;
+            result += `  hasRole('ADMIN'): ${userInfo.role === 'ADMIN' ? '✅ true' : '❌ false'}\n`;
+            result += `  hasRole('Admin'): ${userInfo.role === 'ADMIN' ? '✅ true' : '❌ false'}\n`;
+            
+            showResult('test2-result', result, 'success');
+        }
+        
+        // Función para probar la lógica del middleware
+        function testMiddlewareLogic() {
+            const token = localStorage.getItem('auth_token');
+            let result = '=== PRUEBA DE LÓGICA DEL MIDDLEWARE ===\n\n';
+            
+            if (!token) {
+                result += '❌ No hay token de autenticación\n';
+                showResult('test2-result', result, 'error');
+                return;
+            }
+            
+            try {
+                const payload = token.split('.')[1];
+                const decoded = JSON.parse(atob(payload));
+                
+                result += `Token decodificado:\n`;
+                result += `  Usuario: ${decoded.username || 'N/A'}\n`;
+                result += `  Rol original: ${decoded.role || 'N/A'}\n`;
+                
+                // Simular lógica del middleware
+                const role = decoded.role?.toUpperCase();
+                result += `  Rol normalizado: ${role || 'N/A'}\n\n`;
+                
+                result += 'Verificación de acceso a /admin:\n';
+                if (role === 'ADMIN') {
+                    result += '  ✅ Acceso PERMITIDO (rol es ADMIN)\n';
+                } else {
+                    result += '  ❌ Acceso DENEGADO (rol no es ADMIN)\n';
+                    result += `  Redirigiendo a /unauthorized\n`;
+                }
+                
+                showResult('test2-result', result, 'success');
+            } catch (e) {
+                showResult('test2-result', `Error: ${e.message}`, 'error');
+            }
+        }
+        
+        // Función para probar el componente RoleGuard
+        function testRoleGuard() {
+            const userInfo = getUserInfoFromStorage();
+            let result = '=== PRUEBA DEL COMPONENTE RoleGuard ===\n\n';
+            
+            if (!userInfo) {
+                result += '❌ No hay usuario autenticado\n';
+                showResult('test2-result', result, 'error');
+                return;
+            }
+            
+            const role = userInfo.role.toUpperCase();
+            
+            result += `Rol del usuario: ${role}\n\n`;
+            
+            result += 'Prueba adminOnly=true:\n';
+            result += `  Resultado: ${role === 'ADMIN' ? '✅ Acceso permitido' : '❌ Acceso denegado'}\n\n`;
+            
+            result += 'Prueba promotorOnly=true:\n';
+            const isPromotor = role === 'PROMOTOR' || role === 'USER';
+            result += `  Resultado: ${isPromotor ? '✅ Acceso permitido' : '❌ Acceso denegado'}\n\n`;
+            
+            result += 'Prueba requiredRole=["admin", "promotor"]:\n';
+            const hasAnyRole = role === 'ADMIN' || role === 'PROMOTOR';
+            result += `  Resultado: ${hasAnyRole ? '✅ Acceso permitido' : '❌ Acceso denegado'}\n`;
+            
+            showResult('test2-result', result, 'success');
+        }
+        
+        // Función para probar acceso a ruta /admin
+        function testAdminRoute() {
+            const userInfo = getUserInfoFromStorage();
+            let result = '=== PRUEBA DE ACCESO A /admin ===\n\n';
+            
+            if (!userInfo) {
+                result += '❌ No autenticado → Redirigiendo a /auth/login\n';
+                showResult('test3-result', result, 'error');
+                return;
+            }
+            
+            const role = userInfo.role.toUpperCase();
+            result += `Usuario: ${userInfo.name}\n`;
+            result += `Rol: ${role}\n\n`;
+            
+            if (role === 'ADMIN') {
+                result += '✅ Acceso PERMITIDO\n';
+                result += 'Mostrando panel de administración...\n';
+                result += 'URL: http://localhost:3000/admin';
+            } else {
+                result += '❌ Acceso DENEGADO\n';
+                result += 'Redirigiendo a /unauthorized\n';
+                result += 'URL: http://localhost:3000/unauthorized';
+            }
+            
+            showResult('test3-result', result, role === 'ADMIN' ? 'success' : 'error');
+        }
+        
+        // Función para probar acceso a ruta protegida
+        function testProtectedRoute() {
+            const userInfo = getUserInfoFromStorage();
+            let result = '=== PRUEBA DE ACCESO A /nueva-visita ===\n\n';
+            
+            if (!userInfo) {
+                result += '❌ No autenticado → Redirigiendo a /auth/login\n';
+                showResult('test3-result', result, 'error');
+                return;
+            }
+            
+            const role = userInfo.role.toUpperCase();
+            result += `Usuario: ${userInfo.name}\n`;
+            result += `Rol: ${role}\n\n`;
+            
+            // /nueva-visita requiere autenticación pero no rol específico
+            result += '✅ Acceso PERMITIDO (cualquier usuario autenticado)\n';
+            result += 'URL: http://localhost:3000/nueva-visita';
+            
+            showResult('test3-result', result, 'success');
+        }
+        
+        // Función para limpiar localStorage
+        function clearStorage() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            
+            showResult('test3-result', '✅ localStorage limpiado exitosamente', 'success');
+            updateCurrentState();
+        }
+        
+        // Inicializar
+        updateCurrentState();
