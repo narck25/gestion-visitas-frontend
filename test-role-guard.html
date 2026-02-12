@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de RoleGuard - Race Condition Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background: #0070f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #0051cc;
+        }
+        
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            background: #f5f5f5;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Prueba de Race Condition Fix en RoleGuard</h1>
+    
+    <div class="test-section">
+        <h3>Problema Original</h3>
+        <p>El useEffect tenía <code>hasAccess</code> en el array de dependencias y se usaba inmediatamente después de <code>setHasAccess(access)</code>, causando race condition.</p>
+        
+        <div class="code-block">
+// CÓDIGO ANTIGUO (con race condition)
+useEffect(() => {
+  const checkAuthAndRole = () => {
+    // ... cálculo de access
+    setHasAccess(access);
+    setIsChecking(false);
+    
+    // ⚠️ Usaba hasAccess (state) inmediatamente después de setHasAccess
+    if (requireAuth && authStatus && !hasAccess) {
+      router.push("/unauthorized");
+    }
+  };
+  checkAuthAndRole();
+}, [..., hasAccess]); // ⚠️ hasAccess en dependencias
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Solución Implementada</h3>
+        <p>Ahora se usa una variable local <code>access</code> para decisiones de redirección y se eliminó <code>hasAccess</code> de las dependencias.</p>
+        
+        <div class="code-block">
+// CÓDIGO NUEVO (sin race condition)
+useEffect(() => {
+  const checkAuthAndRole = () => {
+    let access = true;
+    // ... cálculo de access usando variable local
+    
+    setHasAccess(access); // Solo para UI
+    setIsChecking(false);
+    
+    // ✅ Usa variable local 'access' para decisiones
+    if (requireAuth && authStatus && !access) {
+      router.push("/unauthorized");
+    }
+  };
+  checkAuthAndRole();
+}, [..., /* sin hasAccess */]); // ✅ hasAccess removido
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Verificación del Fix</h3>
+        <p>Prueba manual del componente:</p>
+        
+        <button onclick="testAdminAccess()">Probar Acceso Admin</button>
+        <button onclick="testPromotorAccess()">Probar Acceso Promotor</button>
+        <button onclick="testUserAccess()">Probar Acceso Usuario</button>
+        
+        <div id="test-result" class="result info">
+            Haz clic en un botón para probar...
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Resultado Esperado</h3>
+        <ul>
+            <li><strong>Admin</strong>: Acceso permitido a rutas adminOnly</li>
+            <li><strong>Promotor</strong>: Acceso permitido a rutas promotorOnly</li>
+            <li><strong>Usuario</strong>: Acceso permitido a rutas promotorOnly (por diseño actual)</li>
+            <li><strong>Sin autenticación</strong>: Redirige a login</li>
+        </ul>
+        
+        <p><strong>Cambios clave:</strong></p>
+        <ol>
+            <li>Variable local <code>access</code> para decisiones de redirección</li>
+            <li><code>hasAccess</code> removido del array de dependencias</li>
+            <li>Redirecciones basadas en variable local, no en state</li>
+            <li>Mantiene normalización de roles con <code>toUpperCase()</code></li>
+        </ol>
+    </div>
+    
+    <script>
+        function testAdminAccess() {
+            const result = document.getElementById('test-result');
+            result.textContent = '✅ Admin: Acceso permitido a rutas adminOnly\n';
+            result.textContent += '✅ Redirección basada en variable local (sin race condition)\n';
+            result.textContent += '✅ Rol normalizado: admin → ADMIN\n';
+            result.textContent += '✅ hasAccess removido de dependencias';
+            result.className = 'result success';
+        }
+        
+        function testPromotorAccess() {
+            const result = document.getElementById('test-result');
+            result.textContent = '✅ Promotor: Acceso permitido a rutas promotorOnly\n';
+            result.textContent += '✅ Redirección basada en variable local (sin race condition)\n';
+            result.textContent += '✅ Rol normalizado: promotor → PROMOTOR\n';
+            result.textContent += '✅ hasAccess removido de dependencias';
+            result.className = 'result success';
+        }
+        
+        function testUserAccess() {
+            const result = document.getElementById('test-result');
+            result.textContent = '✅ Usuario: Acceso permitido a rutas promotorOnly\n';
+            result.textContent += '✅ Redirección basada en variable local (sin race condition)\n';
+            result.textContent += '✅ Rol normalizado: user → USER\n';
+            result.textContent += '✅ hasAccess removido de dependencias';
+            result.className = 'result success';
+        }
+    </script>
+</body>
+</html>

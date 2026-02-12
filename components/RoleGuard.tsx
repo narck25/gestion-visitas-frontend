@@ -33,38 +33,41 @@ export default function RoleGuard({
       const authStatus = isAuthenticated();
       setIsAuth(authStatus);
       
-        if (authStatus) {
-          const userInfo = getUserInfo();
-          const role = userInfo?.role || null;
-          setUserRole(role);
-          
-          // Verificar acceso basado en roles
-          let access = true;
-          
-          if (adminOnly) {
-            // Normalizar rol a mayúsculas para comparación
-            const normalizedRole = role?.toUpperCase();
-            access = normalizedRole === 'ADMIN';
-          } else if (promotorOnly) {
-            // Normalizar rol a mayúsculas para comparación
-            const normalizedRole = role?.toUpperCase();
-            access = normalizedRole === 'PROMOTOR' || normalizedRole === 'USER';
-          } else if (requiredRole) {
-            if (Array.isArray(requiredRole)) {
-              access = hasAnyRole(requiredRole);
-            } else {
-              access = hasRole(requiredRole);
-            }
+      let role: string | null = null;
+      let access = true;
+      
+      if (authStatus) {
+        const userInfo = getUserInfo();
+        role = userInfo?.role || null;
+        setUserRole(role);
+        
+        // Verificar acceso basado en roles usando variable local
+        if (adminOnly) {
+          // Normalizar rol a mayúsculas para comparación
+          const normalizedRole = role?.toUpperCase();
+          access = normalizedRole === 'ADMIN';
+        } else if (promotorOnly) {
+          // Normalizar rol a mayúsculas para comparación
+          const normalizedRole = role?.toUpperCase();
+          access = normalizedRole === 'PROMOTOR' || normalizedRole === 'USER';
+        } else if (requiredRole) {
+          if (Array.isArray(requiredRole)) {
+            access = hasAnyRole(requiredRole);
+          } else {
+            access = hasRole(requiredRole);
           }
-          
-          setHasAccess(access);
-        } else {
-          setUserRole(null);
-          setHasAccess(false);
         }
+        
+        setHasAccess(access);
+      } else {
+        setUserRole(null);
+        setHasAccess(false);
+        access = false;
+      }
       
       setIsChecking(false);
 
+      // Usar variables locales para decisiones de redirección
       // Redirigir si no está autenticado y requiere autenticación
       if (requireAuth && !authStatus) {
         router.push(redirectTo);
@@ -74,13 +77,13 @@ export default function RoleGuard({
         router.push("/");
       }
       // Redirigir si está autenticado pero no tiene el rol requerido
-      else if (requireAuth && authStatus && !hasAccess) {
+      else if (requireAuth && authStatus && !access) {
         router.push("/unauthorized");
       }
     };
 
     checkAuthAndRole();
-  }, [requireAuth, redirectTo, router, requiredRole, adminOnly, promotorOnly, hasAccess]);
+  }, [requireAuth, redirectTo, router, requiredRole, adminOnly, promotorOnly]);
 
   if (isChecking) {
     return (
