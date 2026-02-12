@@ -18,9 +18,12 @@ import {
   XCircle,
   AlertCircle,
   RefreshCw,
-  Navigation
+  Navigation,
+  FileText,
+  FileDown
 } from "lucide-react";
 import { isAuthenticated, getUserInfo, isAdmin } from "@/lib/auth";
+import { exportVisitasToCSV, exportVisitasToPDF } from "@/lib/export";
 
 // Tipos de datos para visitas
 interface Visita {
@@ -279,6 +282,25 @@ function MisVisitasContent() {
     return userRole === 'ADMIN';
   };
 
+  // Función para manejar exportación
+  const handleExport = (format: 'csv' | 'pdf') => {
+    if (filteredVisitas.length === 0) {
+      alert('No hay visitas para exportar');
+      return;
+    }
+
+    if (format === 'csv') {
+      exportVisitasToCSV(filteredVisitas);
+    } else {
+      exportVisitasToPDF(filteredVisitas);
+    }
+  };
+
+  // Función para ver detalles de visita
+  const handleVerDetalles = (visitaId: number) => {
+    router.push(`/visitas/${visitaId}`);
+  };
+
   const estadisticas = {
     total: visitas.length,
     completadas: visitas.filter(v => v.estado === 'completada').length,
@@ -407,23 +429,41 @@ function MisVisitasContent() {
                 <RefreshCw size={18} />
                 Actualizar
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                <Download size={18} />
-                Exportar
-              </button>
+              <div className="relative group">
+                <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <Download size={18} />
+                  Exportar
+                </button>
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 hidden group-hover:block">
+                  <button
+                    onClick={() => handleExport('csv')}
+                    className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    <FileText size={16} />
+                    Exportar a CSV
+                  </button>
+                  <button
+                    onClick={() => handleExport('pdf')}
+                    className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    <FileDown size={16} />
+                    Exportar a PDF
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {/* Búsqueda */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={20} />
               <input
                 type="text"
                 placeholder="Buscar cliente, ubicación..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
               />
             </div>
 
@@ -432,7 +472,7 @@ function MisVisitasContent() {
               <select
                 value={filterEstado}
                 onChange={(e) => setFilterEstado(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
               >
                 <option value="todos">Todos los estados</option>
                 <option value="completada">Completadas</option>
@@ -447,7 +487,7 @@ function MisVisitasContent() {
                 type="date"
                 value={filterFecha}
                 onChange={(e) => setFilterFecha(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
               />
             </div>
           </div>
@@ -556,7 +596,10 @@ function MisVisitasContent() {
                         <Navigation size={18} />
                         Ver Ubicación
                       </button>
-                      <button className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2">
+                      <button 
+                        onClick={() => handleVerDetalles(visita.id)}
+                        className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 font-medium rounded-lg flex items-center gap-2"
+                      >
                         <Eye size={18} />
                         Ver Detalles
                       </button>

@@ -197,10 +197,10 @@ export default function Home() {
               ➕ Nueva Visita
             </Link>
             <Link 
-              href="/visitas" 
+              href="/mis-visitas" 
               className="px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-lg"
             >
-              📋 Ver Visitas
+              📋 Mis Visitas
             </Link>
             <Link 
               href="/captura" 
@@ -214,6 +214,22 @@ export default function Home() {
                 className="px-8 py-4 bg-purple-600 text-white text-lg font-semibold rounded-xl hover:bg-purple-700 transition-colors shadow-lg"
               >
                 👑 Panel Admin
+              </Link>
+            )}
+            {userInfo?.role === 'SUPERVISOR' && (
+              <Link 
+                href="/supervisor" 
+                className="px-8 py-4 bg-orange-600 text-white text-lg font-semibold rounded-xl hover:bg-orange-700 transition-colors shadow-lg"
+              >
+                👥 Panel Supervisor
+              </Link>
+            )}
+            {userInfo && (userInfo.role === 'ADMIN' || userInfo.role === 'SUPERVISOR' || userInfo.role === 'PROMOTOR') && (
+              <Link 
+                href="/clientes" 
+                className="px-8 py-4 bg-teal-600 text-white text-lg font-semibold rounded-xl hover:bg-teal-700 transition-colors shadow-lg"
+              >
+                🏢 Clientes
               </Link>
             )}
           </div>
