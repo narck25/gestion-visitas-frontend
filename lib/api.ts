@@ -2,6 +2,9 @@
 // Base URL del backend en producción
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// Importar interceptor de errores
+import { apiErrorInterceptor, networkErrorInterceptor } from './error-interceptor';
+
 // Tipos de error
 export interface ApiError {
   message: string;
@@ -21,14 +24,11 @@ export function getAuthToken(): string | null {
 // Función para guardar el token de autenticación
 export function setAuthToken(token: string): void {
   if (typeof window === 'undefined') {
-    console.log('setAuthToken: window is undefined (SSR), cannot save token');
     return;
   }
-  console.log(`setAuthToken: saving token to localStorage, token length: ${token.length}`);
   localStorage.setItem('accessToken', token);
   // También guardar como auth_token para compatibilidad
   localStorage.setItem('auth_token', token);
-  console.log('setAuthToken: token saved successfully');
 }
 
 // Función para eliminar el token de autenticación (logout)
@@ -104,12 +104,13 @@ export async function apiFetch<T = any>(
   } catch (error) {
     // Manejar errores de red o de parseo
     if (error instanceof TypeError && error.message === 'Failed to fetch') {
-      throw {
+      const networkError = {
         message: 'Error de conexión. Verifica tu conexión a internet.',
         status: 0,
       } as ApiError;
+      return networkErrorInterceptor(new Error(networkError.message));
     }
-    throw error;
+    return apiErrorInterceptor(error);
   }
 }
 

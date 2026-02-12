@@ -19,17 +19,14 @@ function LoginContent() {
   useEffect(() => {
     const checkAuth = () => {
       if (isAuthenticated()) {
-        console.log("Usuario ya autenticado, redirigiendo a /");
         router.push("/");
       } else {
-        console.log("Usuario no autenticado, mostrando formulario de login");
         setIsCheckingAuth(false);
         
         // Obtener parámetro de redirección si existe
         const redirect = searchParams.get('redirect');
         if (redirect) {
           setRedirectPath(redirect);
-          console.log("Redirección pendiente después de login:", redirect);
         }
       }
     };
@@ -52,25 +49,16 @@ function LoginContent() {
     setError(null);
 
     try {
-      console.log("Intentando login con usuario:", loginData.username);
       const response = await login(loginData.username, loginData.password);
-      
-      console.log("Login exitoso, success:", response.success);
-      console.log("AccessToken guardado:", localStorage.getItem('accessToken') ? "SÍ" : "NO");
-      console.log("RefreshToken guardado:", localStorage.getItem('refreshToken') ? "SÍ" : "NO");
       
       // Pequeño delay para asegurar que el token se guarde
       setTimeout(() => {
-        console.log("Verificando autenticación después de login:", isAuthenticated());
-        
         // Redirigir a la ruta original o a la página principal
         const targetPath = redirectPath || "/";
-        console.log("Redirigiendo a:", targetPath);
         router.push(targetPath);
       }, 100);
 
     } catch (err: any) {
-      console.error("Error en login:", err);
       setError(err.message || "Error al iniciar sesión");
     } finally {
       setIsLoading(false);
