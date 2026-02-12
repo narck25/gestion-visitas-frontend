@@ -179,17 +179,19 @@ export async function validateForm<T>(
     let data: any;
     
     if (formData instanceof FormData) {
-      // Convertir FormData a objeto
-      data = Object.fromEntries(formData.entries());
-      
-      // Manejar arrays (como fotos)
-      for (const [key, value] of formData.entries()) {
+      // Convertir FormData a objeto manualmente
+      data = {};
+      // Usar for...of con entries() como any para evitar errores de tipo
+      const formDataAny = formData as any;
+      for (const [key, value] of formDataAny.entries()) {
         if (key.endsWith('[]')) {
           const cleanKey = key.slice(0, -2);
           if (!data[cleanKey]) {
             data[cleanKey] = [];
           }
           data[cleanKey].push(value);
+        } else {
+          data[key] = value;
         }
       }
     } else {
@@ -206,11 +208,14 @@ export async function validateForm<T>(
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errors: Record<string, string> = {};
+      const zodError = error as any;
       
-      error.errors.forEach((err: any) => {
-        const path = err.path.join('.');
-        errors[path] = err.message;
-      });
+      if (zodError.errors) {
+        zodError.errors.forEach((err: any) => {
+          const path = err.path?.join('.') || '_form';
+          errors[path] = err.message;
+        });
+      }
       
       return {
         success: false,
