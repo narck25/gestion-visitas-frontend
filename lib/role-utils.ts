@@ -4,7 +4,7 @@
 import { getUserInfo } from './auth';
 
 // Tipos de roles del sistema
-export type UserRole = 'admin' | 'supervisor' | 'promotor' | 'user' | string;
+export type UserRole = 'admin' | 'supervisor' | 'promoter' | 'user' | string;
 
 // Normalizar rol a formato estándar
 export function normalizeRole(role: string | undefined | null): UserRole {
@@ -28,7 +28,7 @@ export function normalizeRole(role: string | undefined | null): UserRole {
     case 'promoter':
     case 'vendedor':
     case 'sales':
-      return 'promotor';
+      return 'promoter';
     
     case 'user':
     case 'usuario':
@@ -69,8 +69,8 @@ export function isUserSupervisor(): boolean {
 }
 
 // Verificar si el usuario es promotor
-export function isUserPromotor(): boolean {
-  return hasRole('promotor');
+export function isUserPromoter(): boolean {
+  return hasRole('promoter');
 }
 
 // Verificar si el usuario es usuario regular
@@ -81,7 +81,7 @@ export function isUserRegular(): boolean {
 // Verificar si el usuario puede acceder a módulo de clientes
 export function canAccessClientes(): boolean {
   const role = getCurrentUserRole();
-  return role === 'admin' || role === 'supervisor' || role === 'promotor';
+  return role === 'admin' || role === 'supervisor' || role === 'promoter';
 }
 
 // Verificar si el usuario puede acceder a módulo de supervisor
@@ -93,7 +93,7 @@ export function canAccessSupervisor(): boolean {
 // Verificar si el usuario puede crear clientes
 export function canCreateClientes(): boolean {
   const role = getCurrentUserRole();
-  return role === 'admin' || role === 'supervisor' || role === 'promotor';
+  return role === 'admin' || role === 'supervisor' || role === 'promoter';
 }
 
 // Verificar si el usuario puede editar clientes
@@ -126,7 +126,7 @@ export function getUserPermissions() {
     canViewAllClientes: role === 'admin' || role === 'supervisor',
     
     // Operaciones de visitas
-    canCreateVisitas: role === 'admin' || role === 'supervisor' || role === 'promotor',
+    canCreateVisitas: role === 'admin' || role === 'supervisor' || role === 'promoter',
     canEditVisitas: role === 'admin' || role === 'supervisor',
     canDeleteVisitas: role === 'admin',
     canViewAllVisitas: role === 'admin' || role === 'supervisor',
@@ -158,7 +158,7 @@ export function getRoleDisplayName(role: UserRole): string {
       return 'Administrador';
     case 'supervisor':
       return 'Supervisor';
-    case 'promotor':
+    case 'promoter':
       return 'Promotor';
     case 'user':
       return 'Usuario';
@@ -174,7 +174,7 @@ export function getRoleColor(role: UserRole): string {
       return 'bg-red-100 text-red-800 border-red-200';
     case 'supervisor':
       return 'bg-orange-100 text-orange-800 border-orange-200';
-    case 'promotor':
+    case 'promoter':
       return 'bg-blue-100 text-blue-800 border-blue-200';
     case 'user':
       return 'bg-green-100 text-green-800 border-green-200';
@@ -190,7 +190,7 @@ export function getRoleIcon(role: UserRole): string {
       return '👑';
     case 'supervisor':
       return '👨‍💼';
-    case 'promotor':
+    case 'promoter':
       return '👨‍💻';
     case 'user':
       return '👤';

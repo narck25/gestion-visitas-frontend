@@ -295,11 +295,11 @@ export function isAdmin(): boolean {
 }
 
 // Función para verificar si el usuario es promotor
-export function isPromotor(): boolean {
+export function isPromoter(): boolean {
   const userInfo = getUserInfo();
   const role = userInfo?.role || '';
   // Comparar con roles en mayúsculas
-  return role === 'PROMOTOR' || role === 'USER';
+  return role === 'PROMOTER' || role === 'USER';
 }
 
 // Función para obtener el rol del usuario

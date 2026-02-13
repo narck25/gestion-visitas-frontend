@@ -49,7 +49,7 @@ export default function RoleGuard({
         } else if (promotorOnly) {
           // Normalizar rol a mayúsculas para comparación
           const normalizedRole = role?.toUpperCase();
-          access = normalizedRole === 'PROMOTOR' || normalizedRole === 'USER';
+          access = normalizedRole === 'PROMOTER' || normalizedRole === 'USER';
         } else if (requiredRole) {
           if (Array.isArray(requiredRole)) {
             access = hasAnyRole(requiredRole);

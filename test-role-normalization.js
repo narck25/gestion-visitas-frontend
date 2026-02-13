@@ -10,9 +10,9 @@ function simulateAuthFunctions() {
     { input: 'admin', expected: 'ADMIN', description: 'admin (minúsculas)' },
     { input: 'ADMIN', expected: 'ADMIN', description: 'ADMIN (mayúsculas)' },
     { input: 'Admin', expected: 'ADMIN', description: 'Admin (mixto)' },
-    { input: 'promotor', expected: 'PROMOTOR', description: 'promotor (minúsculas)' },
-    { input: 'PROMOTOR', expected: 'PROMOTOR', description: 'PROMOTOR (mayúsculas)' },
-    { input: 'Promotor', expected: 'PROMOTOR', description: 'Promotor (mixto)' },
+    { input: 'promotor', expected: 'PROMOTER', description: 'promotor (minúsculas)' },
+    { input: 'PROMOTOR', expected: 'PROMOTER', description: 'PROMOTOR (mayúsculas)' },
+    { input: 'Promotor', expected: 'PROMOTER', description: 'Promotor (mixto)' },
     { input: 'user', expected: 'USER', description: 'user (minúsculas)' },
     { input: 'USER', expected: 'USER', description: 'USER (mayúsculas)' },
     { input: 'User', expected: 'USER', description: 'User (mixto)' },
@@ -87,7 +87,7 @@ function simulateRoleGuardLogic() {
     if (testCase.adminOnly) {
       hasAccess = normalizedRole === 'ADMIN';
     } else if (testCase.promotorOnly) {
-      hasAccess = normalizedRole === 'PROMOTOR' || normalizedRole === 'USER';
+      hasAccess = normalizedRole === 'PROMOTER' || normalizedRole === 'USER';
     }
     
     const passed = hasAccess === testCase.expected;

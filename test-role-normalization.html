@@ -212,7 +212,7 @@
             if (userInfo) {
                 state += `   Rol obtenido: ${userInfo.role}\n`;
                 state += `   ¿Es admin? ${userInfo.role === 'ADMIN' ? '✅ SÍ' : '❌ NO'}\n`;
-                state += `   ¿Es promotor? ${userInfo.role === 'PROMOTOR' || userInfo.role === 'USER' ? '✅ SÍ' : '❌ NO'}\n`;
+                state += `   ¿Es promotor? ${userInfo.role === 'PROMOTER' || userInfo.role === 'USER' ? '✅ SÍ' : '❌ NO'}\n`;
                 state += `   ¿Es usuario? ${userInfo.role === 'USER' ? '✅ SÍ' : '❌ NO'}\n`;
             } else {
                 state += '   No hay usuario autenticado\n';
