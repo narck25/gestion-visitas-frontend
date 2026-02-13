@@ -35,7 +35,7 @@ export interface UpdateUserRequest {
 // Función para obtener todos los usuarios
 export async function getUsers(): Promise<User[]> {
   try {
-    const response = await apiFetch<ApiResponse<User[]>>('/api/users');
+    const response = await apiFetch<ApiResponse<{ users: User[] }>>('/api/users');
     
     // Validar que la respuesta sea exitosa
     if (!response.success) {
@@ -43,7 +43,7 @@ export async function getUsers(): Promise<User[]> {
       return [];
     }
     
-    return response.data;
+    return response.data?.users ?? [];
   } catch (error) {
     const apiError = error as ApiError;
     console.error('Error al obtener usuarios:', apiError.message);
