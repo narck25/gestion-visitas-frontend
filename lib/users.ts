@@ -6,7 +6,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'ADMIN' | 'SUPERVISOR' | 'PROMOTOR';
+  role: 'ADMIN' | 'SUPERVISOR' | 'PROMOTER';
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -219,11 +219,11 @@ export function validateUserData(userData: CreateUserRequest): { isValid: boolea
     };
   }
   
-  const validRoles: User['role'][] = ['ADMIN', 'SUPERVISOR', 'PROMOTOR'];
+  const validRoles: User['role'][] = ['ADMIN', 'SUPERVISOR', 'PROMOTER'];
   if (!validRoles.includes(userData.role)) {
     return {
       isValid: false,
-      message: 'El rol debe ser ADMIN, SUPERVISOR o PROMOTOR',
+      message: 'El rol debe ser ADMIN, SUPERVISOR o PROMOTER',
     };
   }
   
@@ -272,11 +272,11 @@ export function validateUpdateUserData(userData: UpdateUserRequest): { isValid: 
   }
   
   if (userData.role !== undefined) {
-    const validRoles: User['role'][] = ['ADMIN', 'SUPERVISOR', 'PROMOTOR'];
+    const validRoles: User['role'][] = ['ADMIN', 'SUPERVISOR', 'PROMOTER'];
     if (!validRoles.includes(userData.role)) {
       return {
         isValid: false,
-        message: 'El rol debe ser ADMIN, SUPERVISOR o PROMOTOR',
+        message: 'El rol debe ser ADMIN, SUPERVISOR o PROMOTER',
       };
     }
   }

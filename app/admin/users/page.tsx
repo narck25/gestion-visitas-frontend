@@ -128,7 +128,7 @@ export default function UsersManagement() {
     switch (role) {
       case 'ADMIN': return 'bg-blue-100 text-blue-800';
       case 'SUPERVISOR': return 'bg-purple-100 text-purple-800';
-      case 'PROMOTOR': return 'bg-green-100 text-green-800';
+      case 'PROMOTER': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -137,7 +137,7 @@ export default function UsersManagement() {
     switch (role) {
       case 'ADMIN': return 'Administrador';
       case 'SUPERVISOR': return 'Supervisor';
-      case 'PROMOTOR': return 'Promotor';
+      case 'PROMOTER': return 'Promotor';
       default: return role;
     }
   };
@@ -243,7 +243,7 @@ export default function UsersManagement() {
                   <option value="all">Todos los roles</option>
                   <option value="ADMIN">Administrador</option>
                   <option value="SUPERVISOR">Supervisor</option>
-                  <option value="PROMOTOR">Promotor</option>
+                  <option value="PROMOTER">Promotor</option>
                 </select>
               </div>
 

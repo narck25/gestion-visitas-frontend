@@ -17,13 +17,13 @@ export default function UserFormModal({ user, onClose, onSubmit }: UserFormModal
     name: "",
     email: "",
     password: "",
-    role: "PROMOTOR",
+    role: "PROMOTER",
   });
 
   const [updateFormData, setUpdateFormData] = useState<UpdateUserRequest>({
     name: "",
     email: "",
-    role: "PROMOTOR",
+    role: "PROMOTER",
     isActive: true,
   });
 
@@ -43,7 +43,7 @@ export default function UserFormModal({ user, onClose, onSubmit }: UserFormModal
         name: "",
         email: "",
         password: "",
-        role: "PROMOTOR",
+        role: "PROMOTER",
       });
     }
   }, [user]);
@@ -114,7 +114,7 @@ export default function UserFormModal({ user, onClose, onSubmit }: UserFormModal
   const getRoleOptions = () => [
     { value: "ADMIN", label: "Administrador" },
     { value: "SUPERVISOR", label: "Supervisor" },
-    { value: "PROMOTOR", label: "Promotor" },
+    { value: "PROMOTER", label: "Promotor" },
   ];
 
   return (
