@@ -43,8 +43,23 @@ export interface UpdateClientRequest {
 // Función para obtener todos los clientes
 export async function getClients(): Promise<Client[]> {
   try {
-    const clients = await apiFetch<Client[]>('/api/clients');
-    return clients;
+    const response = await apiFetch<any>('/api/clients');
+    
+    // Detectar diferentes formatos de respuesta
+    if (Array.isArray(response)) {
+      // Formato 1: Array directo []
+      return response;
+    } else if (response && Array.isArray(response.clients)) {
+      // Formato 2: { clients: [...] }
+      return response.clients;
+    } else if (response && Array.isArray(response.data)) {
+      // Formato 3: { data: [...] }
+      return response.data;
+    } else {
+      // Formato no reconocido, devolver array vacío
+      console.warn('Formato de respuesta no reconocido en getClients(), devolviendo array vacío:', response);
+      return [];
+    }
   } catch (error) {
     const apiError = error as ApiError;
     console.error('Error al obtener clientes:', apiError.message);
