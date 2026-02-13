@@ -20,10 +20,12 @@ import {
   RefreshCw,
   AlertCircle,
   ChevronRight,
-  Eye
+  Eye,
+  UserPlus
 } from "lucide-react";
 import { getClients, deleteClient, Client } from "@/lib/clients";
 import { getUserInfo, hasAnyRole } from "@/lib/auth";
+import { apiClient } from "@/lib/api-client";
 
 function ClientesContent() {
   const router = useRouter();
@@ -38,6 +40,21 @@ function ClientesContent() {
     clientName: ""
   });
   const [error, setError] = useState<string | null>(null);
+  const [assignModal, setAssignModal] = useState<{
+    isOpen: boolean;
+    clientId: number | null;
+    clientName: string;
+    promotorId: string;
+    loading: boolean;
+    promotores: Array<{ id: number; name: string; email?: string }>;
+  }>({
+    isOpen: false,
+    clientId: null,
+    clientName: "",
+    promotorId: "",
+    loading: false,
+    promotores: []
+  });
 
   useEffect(() => {
     const user = getUserInfo();
@@ -110,6 +127,78 @@ function ClientesContent() {
     if (!userInfo) return false;
     // Solo ADMIN puede eliminar
     return userInfo.role === 'ADMIN';
+  };
+
+  const canAssign = () => {
+    if (!userInfo) return false;
+    // ADMIN y SUPERVISOR pueden asignar, PROMOTER no
+    return hasAnyRole(['ADMIN', 'SUPERVISOR']);
+  };
+
+  const openAssignModal = async (clientId: number, clientName: string) => {
+    try {
+      setAssignModal(prev => ({
+        ...prev,
+        isOpen: true,
+        clientId,
+        clientName,
+        promotorId: "",
+        loading: true
+      }));
+
+      // Fetch promotores
+      const promotores = await apiClient.getPromotores();
+      setAssignModal(prev => ({
+        ...prev,
+        promotores: promotores || [],
+        loading: false
+      }));
+    } catch (err: any) {
+      alert(`Error al cargar promotores: ${err.message || "Error desconocido"}`);
+      setAssignModal(prev => ({
+        ...prev,
+        isOpen: false,
+        loading: false
+      }));
+    }
+  };
+
+  const closeAssignModal = () => {
+    setAssignModal({
+      isOpen: false,
+      clientId: null,
+      clientName: "",
+      promotorId: "",
+      loading: false,
+      promotores: []
+    });
+  };
+
+  const handleAssignPromotor = async () => {
+    if (!assignModal.clientId || !assignModal.promotorId) {
+      alert("Por favor selecciona un promotor");
+      return;
+    }
+
+    try {
+      setAssignModal(prev => ({ ...prev, loading: true }));
+
+      // Call PATCH /api/clients/:id/assign
+      await apiClient.patch(`/api/clients/${assignModal.clientId}/assign`, {
+        promotorId: parseInt(assignModal.promotorId)
+      });
+
+      // Refresh client list
+      await loadClients();
+      
+      // Close modal
+      closeAssignModal();
+      
+      alert("Promotor asignado exitosamente");
+    } catch (err: any) {
+      alert(`Error al asignar promotor: ${err.message || "Error desconocido"}`);
+      setAssignModal(prev => ({ ...prev, loading: false }));
+    }
   };
 
   if (loading && clients.length === 0) {
@@ -335,6 +424,12 @@ function ClientesContent() {
                               <Calendar size={14} />
                               Creado: {formatDate(client.createdAt)}
                             </span>
+                            {!client.promotorId && (
+                              <span className="inline-flex items-center gap-1 text-sm bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                                <AlertCircle size={12} />
+                                Sin asignar
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -397,6 +492,16 @@ function ClientesContent() {
                         <Eye size={18} />
                         Ver Detalles
                       </button>
+                      
+                      {canAssign() && !client.promotorId && (
+                        <button
+                          onClick={() => openAssignModal(client.id, client.name)}
+                          className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 font-medium rounded-lg flex items-center gap-2"
+                        >
+                          <UserPlus size={18} />
+                          Asignar
+                        </button>
+                      )}
                       
                       {canEdit() && (
                         <button
@@ -491,6 +596,94 @@ function ClientesContent() {
                   className="flex-1 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700"
                 >
                   Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Assign Promotor Modal */}
+        {assignModal.isOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Asignar Promotor</h2>
+                <button
+                  onClick={closeAssignModal}
+                  className="text-gray-500 hover:text-gray-700"
+                  disabled={assignModal.loading}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <UserPlus className="text-green-600" size={32} />
+                </div>
+                <p className="text-center text-gray-700 mb-2">
+                  Asignar promotor al cliente
+                </p>
+                <p className="text-center font-bold text-lg text-gray-900 mb-6">
+                  "{assignModal.clientName}"
+                </p>
+
+                {assignModal.loading ? (
+                  <div className="text-center py-4">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <RefreshCw className="text-blue-600 animate-spin" size={16} />
+                    </div>
+                    <p className="text-gray-600">Cargando promotores...</p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Seleccionar Promotor
+                    </label>
+                    <select
+                      value={assignModal.promotorId}
+                      onChange={(e) => setAssignModal(prev => ({ ...prev, promotorId: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      disabled={assignModal.loading}
+                    >
+                      <option value="">Selecciona un promotor</option>
+                      {assignModal.promotores.map((promotor) => (
+                        <option key={promotor.id} value={promotor.id}>
+                          {promotor.name} {promotor.email ? `(${promotor.email})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    {assignModal.promotores.length === 0 && (
+                      <p className="text-sm text-gray-500 mt-2 text-center">
+                        No hay promotores disponibles
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={closeAssignModal}
+                  disabled={assignModal.loading}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleAssignPromotor}
+                  disabled={assignModal.loading || !assignModal.promotorId}
+                  className="flex-1 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {assignModal.loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <RefreshCw className="animate-spin" size={16} />
+                      Asignando...
+                    </span>
+                  ) : (
+                    "Asignar"
+                  )}
                 </button>
               </div>
             </div>
