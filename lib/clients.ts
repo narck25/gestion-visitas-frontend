@@ -16,6 +16,23 @@ export interface Client {
   promotorId?: number;
 }
 
+// Tipo genérico para respuestas de API
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+}
+
+// Interfaz para respuesta de lista de clientes con paginación
+export interface ClientsListResponse {
+  clients: Client[];
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export interface CreateClientRequest {
   name: string;
   email?: string;
@@ -28,7 +45,15 @@ export interface CreateClientRequest {
 export interface CreateClientResponse {
   id: number;
   name: string;
-  message: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  contactPerson?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: number;
+  promotorId?: number;
 }
 
 export interface UpdateClientRequest {
@@ -40,26 +65,29 @@ export interface UpdateClientRequest {
   notes?: string;
 }
 
+export interface DeleteClientResponse {
+  message: string;
+}
+
 // Función para obtener todos los clientes
 export async function getClients(): Promise<Client[]> {
   try {
-    const response = await apiFetch<any>('/api/clients');
+    const response = await apiFetch<ApiResponse<ClientsListResponse>>('/api/clients');
     
-    // Detectar diferentes formatos de respuesta
-    if (Array.isArray(response)) {
-      // Formato 1: Array directo []
-      return response;
-    } else if (response && Array.isArray(response.clients)) {
-      // Formato 2: { clients: [...] }
-      return response.clients;
-    } else if (response && Array.isArray(response.data)) {
-      // Formato 3: { data: [...] }
-      return response.data;
-    } else {
-      // Formato no reconocido, devolver array vacío
-      console.warn('Formato de respuesta no reconocido en getClients(), devolviendo array vacío:', response);
+    // Validar que la respuesta sea exitosa
+    if (!response.success) {
+      console.warn('Respuesta no exitosa en getClients():', response);
       return [];
     }
+    
+    // Extraer los clientes de response.data.clients
+    if (response.data && Array.isArray(response.data.clients)) {
+      return response.data.clients;
+    }
+    
+    // Si no hay clients en data, devolver array vacío
+    console.warn('Formato de respuesta no reconocido en getClients(), devolviendo array vacío:', response);
+    return [];
   } catch (error) {
     const apiError = error as ApiError;
     console.error('Error al obtener clientes:', apiError.message);
@@ -70,8 +98,17 @@ export async function getClients(): Promise<Client[]> {
 // Función para obtener cliente por ID
 export async function getClientById(id: number): Promise<Client> {
   try {
-    const client = await apiFetch<Client>(`/api/clients/${id}`);
-    return client;
+    const response = await apiFetch<ApiResponse<Client>>(`/api/clients/${id}`);
+    
+    // Validar que la respuesta sea exitosa
+    if (!response.success) {
+      throw {
+        message: `Error al obtener cliente ${id}: respuesta no exitosa`,
+        status: 500,
+      } as ApiError;
+    }
+    
+    return response.data;
   } catch (error) {
     const apiError = error as ApiError;
     console.error(`Error al obtener cliente ${id}:`, apiError.message);
@@ -99,12 +136,20 @@ export async function findClientByName(name: string): Promise<Client | null> {
 // Función para crear un nuevo cliente
 export async function createClient(clientData: CreateClientRequest): Promise<CreateClientResponse> {
   try {
-    const response = await apiFetch<CreateClientResponse>('/api/clients', {
+    const response = await apiFetch<ApiResponse<CreateClientResponse>>('/api/clients', {
       method: 'POST',
       body: JSON.stringify(clientData),
     });
     
-    return response;
+    // Validar que la respuesta sea exitosa
+    if (!response.success) {
+      throw {
+        message: 'Error al crear cliente: respuesta no exitosa',
+        status: 500,
+      } as ApiError;
+    }
+    
+    return response.data;
   } catch (error) {
     const apiError = error as ApiError;
     console.error('Error al crear cliente:', apiError.message);
@@ -125,12 +170,20 @@ export async function createClient(clientData: CreateClientRequest): Promise<Cre
 // Función para actualizar un cliente
 export async function updateClient(id: number, clientData: UpdateClientRequest): Promise<Client> {
   try {
-    const response = await apiFetch<Client>(`/api/clients/${id}`, {
+    const response = await apiFetch<ApiResponse<Client>>(`/api/clients/${id}`, {
       method: 'PUT',
       body: JSON.stringify(clientData),
     });
     
-    return response;
+    // Validar que la respuesta sea exitosa
+    if (!response.success) {
+      throw {
+        message: `Error al actualizar cliente ${id}: respuesta no exitosa`,
+        status: 500,
+      } as ApiError;
+    }
+    
+    return response.data;
   } catch (error) {
     const apiError = error as ApiError;
     console.error(`Error al actualizar cliente ${id}:`, apiError.message);
@@ -148,13 +201,21 @@ export async function updateClient(id: number, clientData: UpdateClientRequest):
 }
 
 // Función para eliminar un cliente
-export async function deleteClient(id: number): Promise<{ message: string }> {
+export async function deleteClient(id: number): Promise<DeleteClientResponse> {
   try {
-    const response = await apiFetch<{ message: string }>(`/api/clients/${id}`, {
+    const response = await apiFetch<ApiResponse<DeleteClientResponse>>(`/api/clients/${id}`, {
       method: 'DELETE',
     });
     
-    return response;
+    // Validar que la respuesta sea exitosa
+    if (!response.success) {
+      throw {
+        message: `Error al eliminar cliente ${id}: respuesta no exitosa`,
+        status: 500,
+      } as ApiError;
+    }
+    
+    return response.data;
   } catch (error) {
     const apiError = error as ApiError;
     console.error(`Error al eliminar cliente ${id}:`, apiError.message);
