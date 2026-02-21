@@ -178,8 +178,23 @@ export function validateVisitData(data: {
 // Función para obtener todas las visitas
 export async function getVisits(): Promise<Visit[]> {
   try {
-    const visits = await apiFetch<Visit[]>('/api/visits');
-    return visits;
+    const response = await apiFetch<any>('/api/visits');
+    
+    // La API devuelve { success: boolean, data: { visits: [], pagination: {} } }
+    // Extraer el array de visitas de la respuesta
+    if (response && response.success && response.data && response.data.visits) {
+      return response.data.visits;
+    } else if (Array.isArray(response)) {
+      // Si la respuesta es directamente un array (para compatibilidad)
+      return response;
+    } else if (response && response.visits) {
+      // Si la respuesta tiene visits en el nivel superior
+      return response.visits;
+    }
+    
+    // Si no se pudo extraer visitas, devolver array vacío
+    console.warn('Formato de respuesta inesperado:', response);
+    return [];
   } catch (error) {
     const apiError = error as ApiError;
     console.error('Error al obtener visitas:', apiError.message);
