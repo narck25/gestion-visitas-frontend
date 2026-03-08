@@ -16,11 +16,15 @@ export interface Visit {
 }
 
 export interface CreateVisitRequest {
-  clientId: number;
-  latitude: number;
-  longitude: number;
-  accuracy: number;
+  clientId: string;
   notes: string;
+  date?: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  beforePhotos: string[];
+  afterPhotos: string[];
+  signature?: string;
 }
 
 export interface CreateVisitResponse {
@@ -35,26 +39,19 @@ export interface CreateVisitResponse {
   message: string;
 }
 
-export interface UploadImageRequest {
-  visitId: number;
-  type: 'BEFORE' | 'AFTER';
-  images: File[];
-}
-
-export interface UploadImageResponse {
-  id: number;
-  visitId: number;
-  type: string;
-  imageUrl: string;
-  message: string;
-}
-
 // Función para crear una nueva visita
 export async function createVisit(data: CreateVisitRequest): Promise<CreateVisitResponse> {
   try {
+    // Asegurar que beforePhotos y afterPhotos sean arrays
+    const payload = {
+      ...data,
+      beforePhotos: data.beforePhotos || [],
+      afterPhotos: data.afterPhotos || [],
+    };
+    
     const response = await apiFetch<CreateVisitResponse>('/api/visits', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
     
     return response;
@@ -75,90 +72,18 @@ export async function createVisit(data: CreateVisitRequest): Promise<CreateVisit
   }
 }
 
-// Función para subir imágenes de una visita
-export async function uploadVisitImages(data: UploadImageRequest): Promise<UploadImageResponse[]> {
-  try {
-    const formData = new FormData();
-    formData.append('visitId', data.visitId.toString());
-    formData.append('type', data.type);
-    
-    // Agregar cada imagen al FormData
-    data.images.forEach((image, index) => {
-      formData.append('images', image);
-    });
-    
-    const response = await apiUpload<UploadImageResponse[]>('/api/visits/images', formData);
-    return response;
-  } catch (error) {
-    const apiError = error as ApiError;
-    console.error('Error al subir imágenes:', apiError.message);
-    throw apiError;
-  }
-}
-
-// Función para subir ambas imágenes (antes y después)
-export async function uploadBothVisitImages(
-  visitId: number,
-  beforeImage: File | null,
-  afterImage: File | null
-): Promise<{ before?: UploadImageResponse; after?: UploadImageResponse }> {
-  const results: { before?: UploadImageResponse; after?: UploadImageResponse } = {};
-  
-  try {
-    // Subir imagen ANTES si existe
-    if (beforeImage) {
-      const beforeResponse = await uploadVisitImages({
-        visitId,
-        type: 'BEFORE',
-        images: [beforeImage],
-      });
-      results.before = beforeResponse[0];
-    }
-    
-    // Subir imagen DESPUÉS si existe
-    if (afterImage) {
-      const afterResponse = await uploadVisitImages({
-        visitId,
-        type: 'AFTER',
-        images: [afterImage],
-      });
-      results.after = afterResponse[0];
-    }
-    
-    return results;
-  } catch (error) {
-    console.error('Error al subir imágenes de visita:', error);
-    throw error;
-  }
-}
-
 // Función para validar datos de visita
 export function validateVisitData(data: {
-  clientId?: number;
-  latitude?: number;
-  longitude?: number;
-  accuracy?: number;
+  clientId?: string;
   notes?: string;
+  beforePhotos?: string[];
+  afterPhotos?: string[];
 }): { isValid: boolean; message: string } {
   
-  if (!data.clientId || data.clientId <= 0) {
+  if (!data.clientId || data.clientId.trim() === '') {
     return {
       isValid: false,
       message: 'Se requiere un cliente válido',
-    };
-  }
-  
-  if (data.latitude === undefined || data.longitude === undefined) {
-    return {
-      isValid: false,
-      message: 'Se requiere ubicación GPS',
-    };
-  }
-  
-  if (data.accuracy === undefined || data.accuracy <= 0) {
-    return {
-      isValid: false,
-      message: 'La precisión GPS no es válida',
     };
   }
   
@@ -166,6 +91,21 @@ export function validateVisitData(data: {
     return {
       isValid: false,
       message: 'Las notas no pueden exceder 1000 caracteres',
+    };
+  }
+  
+  // Asegurar que beforePhotos y afterPhotos sean arrays
+  if (data.beforePhotos && !Array.isArray(data.beforePhotos)) {
+    return {
+      isValid: false,
+      message: 'Las fotos ANTES deben ser un array',
+    };
+  }
+  
+  if (data.afterPhotos && !Array.isArray(data.afterPhotos)) {
+    return {
+      isValid: false,
+      message: 'Las fotos DESPUÉS deben ser un array',
     };
   }
   

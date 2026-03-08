@@ -205,7 +205,7 @@ export default function NuevaVisitaPage() {
 
       // Importar módulos necesarios
       const { getOrCreateClient } = await import("@/lib/clients");
-      const { createVisit, uploadBothVisitImages } = await import("@/lib/visits");
+      const { createVisit } = await import("@/lib/visits");
 
       // 1. Obtener o crear cliente
       let clientId = visitData.clienteId;
@@ -213,23 +213,15 @@ export default function NuevaVisitaPage() {
         clientId = await getOrCreateClient(visitData.cliente.trim());
       }
 
-      // 2. Crear la visita
-      const visitResponse = await createVisit({
-        clientId,
+      // 2. Crear la visita con todas las imágenes incluidas
+      await createVisit({
+        clientId: clientId.toString(),
+        notes: visitData.notas || "",
         latitude: visitData.location.lat,
         longitude: visitData.location.lng,
-        accuracy: visitData.location.accuracy,
-        notes: visitData.notas || "",
+        beforePhotos: visitData.fotoAntes ? [visitData.fotoAntes.base64] : [],
+        afterPhotos: visitData.fotoDespues ? [visitData.fotoDespues.base64] : [],
       });
-
-      const visitId = visitResponse.id;
-
-      // 3. Subir imágenes
-      await uploadBothVisitImages(
-        visitId,
-        visitData.fotoAntes.file,
-        visitData.fotoDespues.file
-      );
 
       setSuccess(true);
       setIsSending(false);
