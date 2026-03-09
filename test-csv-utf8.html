@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba CSV UTF-8</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .test-data {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #4338CA;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Prueba de Exportación CSV con UTF-8</h1>
+    
+    <div class="test-data">
+        <h3>Datos de prueba con acentos y caracteres especiales:</h3>
+        <ul>
+            <li>Cliente: Café El Árbol</li>
+            <li>Ubicación: Calle José María Morelos #123, México</li>
+            <li>Promotor: María José Fernández</li>
+            <li>Estado: Completada</li>
+            <li>Notas: Visita con éxito, se instaló el equipo correctamente</li>
+        </ul>
+    </div>
+    
+    <div>
+        <button onclick="testExport()">Probar Exportación CSV</button>
+        <button onclick="testExportWithBOM()">Probar Exportación CSV con BOM</button>
+    </div>
+    
+    <div class="result" id="result">
+        <h3>Resultado:</h3>
+        <p>Haz clic en un botón para probar la exportación.</p>
+    </div>
+    
+    <script>
+        // Datos de prueba con acentos
+        const testData = [
+            {
+                ID: 1,
+                Fecha: '2024-03-09',
+                Hora: '10:30',
+                Cliente: 'Café El Árbol',
+                Ubicación: 'Calle José María Morelos #123, México',
+                Promotor: 'María José Fernández',
+                Estado: 'Completada',
+                Fotos: 3,
+                Notas: 'Visita con éxito, se instaló el equipo correctamente'
+            },
+            {
+                ID: 2,
+                Fecha: '2024-03-08',
+                Hora: '14:15',
+                Cliente: 'Restaurante La Niña',
+                Ubicación: 'Avenida Insurgentes Sur #456, Ciudad de México',
+                Promotor: 'Juan Pérez López',
+                Estado: 'Pendiente',
+                Fotos: 0,
+                Notas: 'Programada para la próxima semana'
+            }
+        ];
+        
+        function exportToCSV(data, filename, useBOM = false) {
+            if (!data || data.length === 0) {
+                document.getElementById('result').innerHTML = '<p style="color: red;">No hay datos para exportar</p>';
+                return;
+            }
+            
+            // Obtener headers del primer objeto
+            const headers = Object.keys(data[0]);
+            
+            // Crear contenido CSV
+            const csvContent = [
+                headers.join(','), // Headers
+                ...data.map(row => 
+                    headers.map(header => {
+                        const value = row[header];
+                        // Escapar comas y comillas
+                        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                            return `"${value.replace(/"/g, '""')}"`;
+                        }
+                        return value || '';
+                    }).join(',')
+                )
+            ].join('\n');
+            
+            // Agregar BOM si se solicita
+            const BOM = useBOM ? '\uFEFF' : '';
+            const content = BOM + csvContent;
+            
+            // Crear blob y descargar
+            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Mostrar resultado
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `
+                <h3>Exportación completada:</h3>
+                <p><strong>Archivo:</strong> ${filename}</p>
+                <p><strong>Usando BOM:</strong> ${useBOM ? 'Sí' : 'No'}</p>
+                <p><strong>Contenido CSV:</strong></p>
+                <pre style="background: white; padding: 10px; border: 1px solid #ccc; overflow: auto;">${content}</pre>
+                <p><strong>Instrucciones para abrir en Excel:</strong></p>
+                <ol>
+                    <li>Abre Excel</li>
+                    <li>Ve a "Datos" → "Obtener datos externos" → "Desde texto"</li>
+                    <li>Selecciona el archivo CSV</li>
+                    <li>En el asistente de importación:
+                        <ul>
+                            <li>Paso 1: Selecciona "Delimitado"</li>
+                            <li>Paso 2: Marca "Coma" como delimitador</li>
+                            <li>Paso 3: Para cada columna, selecciona "Texto" como formato</li>
+                            <li>Paso 4: Selecciona "UTF-8" como origen del archivo</li>
+                        </ul>
+                    </li>
+                    <li>Haz clic en "Finalizar"</li>
+                </ol>
+            `;
+        }
+        
+        function testExport() {
+            exportToCSV(testData, 'test_sin_bom.csv', false);
+        }
+        
+        function testExportWithBOM() {
+            exportToCSV(testData, 'test_con_bom.csv', true);
+        }
+    </script>
+</body>
+</html>

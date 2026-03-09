@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { isAuthenticated, getUserInfo, isAdmin } from "@/lib/auth";
 import { exportVisitasToCSV, exportVisitasToPDF } from "@/lib/export";
-import { getVisits, Visit as ApiVisit } from "@/lib/visits";
+import { getVisits, Visit as ApiVisit, getVisitDuration } from "@/lib/visits";
 
 // Tipos de datos para visitas (frontend)
 interface Visita {
@@ -52,6 +52,7 @@ function MisVisitasContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState<string>("todos");
   const [filterFecha, setFilterFecha] = useState<string>("");
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   useEffect(() => {
     // Verificar autenticación
@@ -66,6 +67,21 @@ function MisVisitasContent() {
     // Cargar visitas
     loadVisitas(user);
   }, [router]);
+
+  // Cerrar menú de exportación al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (exportMenuOpen && !target.closest('.relative.inline-block')) {
+        setExportMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [exportMenuOpen]);
 
   const loadVisitas = async (user: { username: string; name: string; role: string } | null) => {
     setLoading(true);
@@ -445,27 +461,38 @@ function MisVisitasContent() {
                 <RefreshCw size={18} />
                 Actualizar
               </button>
-              <div className="relative group">
-                <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <div className="relative inline-block">
+                <button
+                  onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
                   <Download size={18} />
                   Exportar
                 </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 hidden group-hover:block">
-                  <button
-                    onClick={() => handleExport('csv')}
-                    className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                  >
-                    <FileText size={16} />
-                    Exportar a CSV
-                  </button>
-                  <button
-                    onClick={() => handleExport('pdf')}
-                    className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                  >
-                    <FileDown size={16} />
-                    Exportar a PDF
-                  </button>
-                </div>
+                {exportMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <button
+                      onClick={() => {
+                        handleExport('csv');
+                        setExportMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <FileText size={16} />
+                      Exportar a CSV
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleExport('pdf');
+                        setExportMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <FileDown size={16} />
+                      Exportar a PDF
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

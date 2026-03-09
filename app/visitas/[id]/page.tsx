@@ -24,120 +24,71 @@ import {
   Printer
 } from "lucide-react";
 import { isAuthenticated, getUserInfo } from "@/lib/auth";
+import { getVisitById, Visit, getPhotoUrl, getVisitDuration } from "@/lib/visits";
 
-// Tipos de datos para visita detallada
+// Función helper para calcular duración
+function calcularDuracion(createdAt: string, updatedAt: string): string {
+  const inicio = new Date(createdAt);
+  const fin = new Date(updatedAt);
+  
+  // Validar fechas
+  if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
+    return "Duración no disponible";
+  }
+  
+  const diff = Math.floor((fin.getTime() - inicio.getTime()) / 1000);
+  
+  // Si la diferencia es negativa (caso raro), mostrar mensaje
+  if (diff < 0) {
+    return "Datos inconsistentes";
+  }
+  
+  const minutos = Math.floor(diff / 60);
+  const segundos = diff % 60;
+  
+  if (minutos === 0) return `${segundos} segundos`;
+  return `${minutos} min ${segundos} seg`;
+}
+
+// Tipo para visita detallada adaptada del backend
 interface VisitaDetallada {
-  id: number;
+  id: string;
   fecha: string;
   hora: string;
   cliente: string;
-  clienteId: number;
+  clienteId: string;
   ubicacion: string;
   lat?: number;
   lng?: number;
   promotor: string;
-  promotorId: number;
+  promotorId: string;
   estado: 'completada' | 'pendiente' | 'cancelada';
   notas?: string;
   fotos: number;
-  fotosUrls?: string[];
-  productos?: string[];
-  observaciones?: string;
-  duracion?: string;
-  temperatura?: string;
-  clima?: string;
+  beforePhotos: string[];
+  afterPhotos: string[];
   createdAt: string;
   updatedAt: string;
+  duracion: string;
 }
-
-// Datos de ejemplo para demostración
-const visitasDetalladas: VisitaDetallada[] = [
-  {
-    id: 1,
-    fecha: '2024-03-15',
-    hora: '10:30',
-    cliente: 'Tienda ABC',
-    clienteId: 101,
-    ubicacion: 'Centro Comercial Plaza, Av. Principal 123, Col. Centro',
-    lat: 19.4326,
-    lng: -99.1332,
-    promotor: 'Juan Pérez',
-    promotorId: 101,
-    estado: 'completada',
-    notas: 'Visita de seguimiento, cliente satisfecho con los productos. Se realizó demostración del nuevo catálogo.',
-    fotos: 3,
-    fotosUrls: [
-      '/placeholder-foto1.jpg',
-      '/placeholder-foto2.jpg',
-      '/placeholder-foto3.jpg'
-    ],
-    productos: ['Producto A', 'Producto B', 'Producto C'],
-    observaciones: 'Cliente mostró interés en ampliar su pedido para el próximo mes.',
-    duracion: '45 minutos',
-    temperatura: '22°C',
-    clima: 'Soleado',
-    createdAt: '2024-03-15T10:30:00Z',
-    updatedAt: '2024-03-15T11:15:00Z'
-  },
-  {
-    id: 2,
-    fecha: '2024-03-14',
-    hora: '14:00',
-    cliente: 'Supermercado XYZ',
-    clienteId: 102,
-    ubicacion: 'Av. Principal 123, Col. Norte',
-    lat: 19.4342,
-    lng: -99.1345,
-    promotor: 'María García',
-    promotorId: 102,
-    estado: 'completada',
-    notas: 'Nuevo pedido realizado. Cliente solicitó entrega para el viernes.',
-    fotos: 2,
-    fotosUrls: [
-      '/placeholder-foto4.jpg',
-      '/placeholder-foto5.jpg'
-    ],
-    productos: ['Producto D', 'Producto E'],
-    observaciones: 'Se coordinó entrega con el almacén.',
-    duracion: '30 minutos',
-    temperatura: '24°C',
-    clima: 'Parcialmente nublado',
-    createdAt: '2024-03-14T14:00:00Z',
-    updatedAt: '2024-03-14T14:30:00Z'
-  },
-  {
-    id: 3,
-    fecha: '2024-03-14',
-    hora: '16:45',
-    cliente: 'Farmacia Salud',
-    clienteId: 103,
-    ubicacion: 'Calle Secundaria 456, Col. Sur',
-    lat: 19.4330,
-    lng: -99.1320,
-    promotor: 'Carlos López',
-    promotorId: 103,
-    estado: 'pendiente',
-    notas: 'Programada para mañana. Cliente no estaba disponible hoy.',
-    fotos: 0,
-    productos: [],
-    observaciones: 'Reagendar para mañana a la misma hora.',
-    duracion: '15 minutos',
-    temperatura: '23°C',
-    clima: 'Lluvioso',
-    createdAt: '2024-03-14T16:45:00Z',
-    updatedAt: '2024-03-14T17:00:00Z'
-  }
-];
 
 function VisitaDetalleContent() {
   const router = useRouter();
   const params = useParams();
-  const visitaId = params.id ? parseInt(params.id as string) : null;
+  const visitaId = params.id as string;
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<{ username: string; name: string; role: string } | null>(null);
   const [visita, setVisita] = useState<VisitaDetallada | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // Función para manejar correctamente las fotos base64 (para compatibilidad)
+  const getPhotoSrc = (photo: string) => {
+    if (!photo) return '';
+    if (photo.startsWith("data:image")) return photo;
+    return `data:image/jpeg;base64,${photo}`;
+  };
 
   useEffect(() => {
     // Verificar autenticación
@@ -157,22 +108,127 @@ function VisitaDetalleContent() {
     }
   }, [visitaId, router]);
 
-  const loadVisita = async (id: number) => {
+  const loadVisita = async (id: string) => {
     setLoading(true);
     setError(null);
     
-    // Simular carga de datos
-    setTimeout(() => {
-      const visitaEncontrada = visitasDetalladas.find(v => v.id === id);
+    try {
+      console.log(`[DEBUG] loadVisita: Iniciando carga de visita con ID: ${id}`);
       
-      if (visitaEncontrada) {
-        setVisita(visitaEncontrada);
-      } else {
-        setError(`No se encontró la visita con ID: ${id}`);
+      // Obtener visita real de la API
+      const apiVisit = await getVisitById(id);
+      console.log('[DEBUG] loadVisita: Objeto apiVisit recibido:', apiVisit);
+      
+      // Agregar logs de diagnóstico para ver la estructura real
+      console.log('[DEBUG] loadVisita: Propiedades de apiVisit:');
+      console.log('- id:', apiVisit.id);
+      console.log('- client:', (apiVisit as any).client);
+      console.log('- client?.name:', (apiVisit as any).client?.name);
+      console.log('- client?.id:', (apiVisit as any).client?.id);
+      console.log('- promoter:', (apiVisit as any).promoter);
+      console.log('- promoter?.name:', (apiVisit as any).promoter?.name);
+      console.log('- promoter?.id:', (apiVisit as any).promoter?.id);
+      console.log('- status:', apiVisit.status);
+      console.log('- notes:', apiVisit.notes);
+      console.log('- latitude:', apiVisit.latitude);
+      console.log('- longitude:', apiVisit.longitude);
+      console.log('- beforePhotos:', (apiVisit as any).beforePhotos);
+      console.log('- afterPhotos:', (apiVisit as any).afterPhotos);
+      console.log('- photos:', (apiVisit as any).photos);
+      console.log('- createdAt:', apiVisit.createdAt);
+      console.log('- updatedAt:', apiVisit.updatedAt);
+      console.log('- date:', (apiVisit as any).date);
+      
+      // Mapear datos del backend al formato del frontend
+      const fechaISO = apiVisit.createdAt;
+      let fecha = 'Sin fecha';
+      let hora = 'Sin hora';
+      
+      if (fechaISO) {
+        const fechaObj = new Date(fechaISO);
+        if (!isNaN(fechaObj.getTime())) {
+          fecha = fechaObj.toISOString().split('T')[0];
+          hora = fechaObj.toLocaleTimeString('es-ES', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+          });
+        }
       }
       
+      // Convertir estado del backend al frontend
+      let estado: 'completada' | 'pendiente' | 'cancelada';
+      const status = apiVisit.status?.toUpperCase();
+      
+      switch (status) {
+        case 'COMPLETED':
+        case 'FINISHED':
+        case 'DONE':
+          estado = 'completada';
+          break;
+        case 'SCHEDULED':
+        case 'PENDING':
+        case 'IN_PROGRESS':
+          estado = 'pendiente';
+          break;
+        case 'CANCELLED':
+        case 'CANCELED':
+          estado = 'cancelada';
+          break;
+        default:
+          estado = 'pendiente';
+      }
+      
+      // Crear ubicación a partir de dirección o coordenadas
+      let ubicacion = 'Ubicación no disponible';
+      if (apiVisit.latitude && apiVisit.longitude) {
+        ubicacion = `Lat: ${apiVisit.latitude.toFixed(6)}, Lng: ${apiVisit.longitude.toFixed(6)}`;
+      }
+      
+      // Mapper robusto usando propiedades correctas
+      const visitaMapeada: VisitaDetallada = {
+        id: apiVisit.id,
+        fecha: fecha,
+        hora: hora,
+        cliente: (apiVisit as any).client?.name || apiVisit.clientName || "Cliente no especificado",
+        clienteId: (apiVisit as any).client?.id || "N/A",
+        ubicacion: ubicacion,
+        lat: apiVisit.latitude ?? null,
+        lng: apiVisit.longitude ?? null,
+        promotor: (apiVisit as any).promoter?.name || "Promotor no especificado",
+        promotorId: (apiVisit as any).promoter?.id || "N/A",
+        estado: estado,
+        notas: apiVisit.notes || "",
+        fotos: ((apiVisit as any).beforePhotos?.length || 0) + ((apiVisit as any).afterPhotos?.length || 0),
+        beforePhotos: (apiVisit as any).beforePhotos || [],
+        afterPhotos: (apiVisit as any).afterPhotos || [],
+        createdAt: apiVisit.createdAt || "",
+        updatedAt: apiVisit.updatedAt || "",
+        duracion: getVisitDuration(apiVisit.createdAt || "", apiVisit.updatedAt || "")
+      };
+      
+      console.log('[DEBUG] loadVisita: Objeto mapeado:', visitaMapeada);
+      
+      setVisita(visitaMapeada);
+    } catch (error: any) {
+      console.error('[DEBUG] Error al cargar visita:', error);
+      
+      let errorMessage = 'Error al cargar los detalles de la visita. Por favor, intenta nuevamente.';
+      
+      if (error?.message?.includes('No se encontró')) {
+        errorMessage = `No se encontró la visita con ID: ${id}`;
+      } else if (error?.status === 404) {
+        errorMessage = 'La visita solicitada no existe.';
+      } else if (error?.status === 401) {
+        errorMessage = 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.';
+      } else if (error?.message?.includes('Failed to fetch')) {
+        errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
+      }
+      
+      setError(errorMessage);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const getEstadoColor = (estado: string) => {
@@ -194,7 +250,15 @@ function VisitaDetalleContent() {
   };
 
   const formatFecha = (fecha: string) => {
+    if (!fecha || fecha === 'Sin fecha') {
+      return 'Sin fecha';
+    }
+    
     const date = new Date(fecha);
+    if (isNaN(date.getTime())) {
+      return 'Fecha inválida';
+    }
+    
     return date.toLocaleDateString('es-ES', {
       weekday: 'long',
       year: 'numeric',
@@ -206,7 +270,15 @@ function VisitaDetalleContent() {
   };
 
   const formatFechaCorta = (fecha: string) => {
+    if (!fecha || fecha === 'Sin fecha') {
+      return 'Sin fecha';
+    }
+    
     const date = new Date(fecha);
+    if (isNaN(date.getTime())) {
+      return 'Fecha inválida';
+    }
+    
     return date.toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',
@@ -277,7 +349,7 @@ function VisitaDetalleContent() {
               Volver a Mis Visitas
             </Link>
             <button
-              onClick={() => loadVisita(visitaId!)}
+              onClick={() => loadVisita(visitaId)}
               className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
             >
               <RefreshCw size={18} />
@@ -302,7 +374,7 @@ function VisitaDetalleContent() {
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Detalles de Visita</h1>
                 <p className="text-sm text-gray-600">
-                  ID: {visita.id} • {visita.cliente}
+                  ID: {visita?.id ? visita.id.substring(0, 8) + '...' : 'N/A'} • {visita?.cliente || 'Sin información'}
                 </p>
               </div>
             </div>
@@ -346,7 +418,7 @@ function VisitaDetalleContent() {
                     {visita.estado.charAt(0).toUpperCase() + visita.estado.slice(1)}
                   </span>
                   <span className="text-sm text-gray-500">
-                    ID: #{visita.id}
+                    ID: #{visita?.id ? visita.id.substring(0, 8) + '...' : 'N/A'}
                   </span>
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{visita.cliente}</h1>
@@ -382,16 +454,18 @@ function VisitaDetalleContent() {
                 </h3>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm text-blue-700">Duración:</span>
-                    <span className="font-medium text-blue-900">{visita.duracion || 'No registrada'}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-sm text-blue-700">Fotos:</span>
                     <span className="font-medium text-blue-900">{visita.fotos} {visita.fotos === 1 ? 'foto' : 'fotos'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-blue-700">Clima:</span>
-                    <span className="font-medium text-blue-900">{visita.clima || 'No registrado'}</span>
+                    <span className="text-sm text-blue-700">Estado:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(visita.estado)}`}>
+                      {visita.estado}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-blue-700">Duración:</span>
+                    <span className="font-medium text-blue-900">{visita.duracion}</span>
                   </div>
                 </div>
               </div>
@@ -403,17 +477,13 @@ function VisitaDetalleContent() {
                 </h3>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm text-green-700">ID Cliente:</span>
-                    <span className="font-medium text-green-900">#{visita.clienteId}</span>
+                    <span className="text-sm text-green-700">Cliente:</span>
+                    <span className="font-medium text-green-900">{visita.cliente}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-green-700">Temperatura:</span>
-                    <span className="font-medium text-green-900">{visita.temperatura || 'No registrada'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-green-700">Estado:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(visita.estado)}`}>
-                      {visita.estado}
+                    <span className="text-sm text-green-700">Coordenadas:</span>
+                    <span className="font-medium text-green-900">
+                      {visita.lat?.toFixed(6) || 'N/A'}, {visita.lng?.toFixed(6) || 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -433,10 +503,6 @@ function VisitaDetalleContent() {
                     <span className="text-sm text-purple-700">Actualizada:</span>
                     <span className="font-medium text-purple-900">{formatFechaCorta(visita.updatedAt)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-purple-700">Hora:</span>
-                    <span className="font-medium text-purple-900">{visita.hora}</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -448,188 +514,221 @@ function VisitaDetalleContent() {
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
               >
                 <Navigation size={18} />
-                Ver en Google Maps
+                Ver Ubicación
               </button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
-                <Download size={18} />
-                Descargar Reporte
+              <button
+                onClick={handlePrint}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Printer size={18} />
+                Imprimir Detalles
               </button>
-              <button className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors flex items-center gap-2">
-                <Edit size={18} />
-                Editar Visita
-              </button>
-              <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2">
-                <Trash2 size={18} />
-                Eliminar Visita
+              <button
+                onClick={handleShare}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+              >
+                <Share2 size={18} />
+                Compartir
               </button>
             </div>
-          </div>
 
-          {/* Notas y Observaciones */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <FileText size={20} />
-                Notas de la Visita
-              </h3>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-gray-700 whitespace-pre-line">{visita.notas || 'No hay notas registradas para esta visita.'}</p>
+            {/* Notas */}
+            {visita.notas && (
+              <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                  <FileText size={18} />
+                  Notas de la Visita
+                </h3>
+                <p className="text-gray-700 whitespace-pre-wrap">{visita.notas}</p>
               </div>
-            </div>
+            )}
 
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <AlertCircle size={20} />
-                Observaciones
-              </h3>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-gray-700 whitespace-pre-line">{visita.observaciones || 'No hay observaciones registradas.'}</p>
+            {/* Fotos de la visita */}
+            {(visita.beforePhotos.length > 0 || visita.afterPhotos.length > 0) && (
+              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <h3 className="font-medium text-yellow-900 mb-4 flex items-center gap-2">
+                  <Camera size={18} />
+                  Fotos de la Visita ({visita.fotos} {visita.fotos === 1 ? 'foto' : 'fotos'})
+                </h3>
+                
+                {/* Fotos ANTES */}
+                {visita.beforePhotos?.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium text-yellow-800 mb-3 flex items-center gap-2">
+                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">ANTES</span>
+                      {visita.beforePhotos.length} {visita.beforePhotos.length === 1 ? 'foto' : 'fotos'}
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {visita.beforePhotos.map((photo, index) => (
+                        <img
+                          key={`before-${index}`}
+                          src={getPhotoUrl(photo)}
+                          alt={`Foto antes ${index}`}
+                          className="w-full h-40 object-cover rounded-lg border border-yellow-300 cursor-pointer hover:opacity-80 transition"
+                          onClick={() => setSelectedImage(getPhotoUrl(photo))}
+                          loading="lazy"
+                          onError={(e) => {
+                            console.error("Error cargando imagen:", photo);
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fotos DESPUÉS */}
+                {visita.afterPhotos?.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-yellow-800 mb-3 flex items-center gap-2">
+                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">DESPUÉS</span>
+                      {visita.afterPhotos.length} {visita.afterPhotos.length === 1 ? 'foto' : 'fotos'}
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {visita.afterPhotos.map((photo, index) => (
+                        <img
+                          key={`after-${index}`}
+                          src={getPhotoUrl(photo)}
+                          alt={`Foto después ${index}`}
+                          className="w-full h-40 object-cover rounded-lg border border-green-300 cursor-pointer hover:opacity-80 transition"
+                          onClick={() => setSelectedImage(getPhotoUrl(photo))}
+                          loading="lazy"
+                          onError={(e) => {
+                            console.error("Error cargando imagen:", photo);
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mensaje si no hay fotos */}
+                {visita.beforePhotos.length === 0 && visita.afterPhotos.length === 0 && (
+                  <div className="text-center py-4">
+                    <Camera size={24} className="mx-auto text-yellow-400 mb-2" />
+                    <p className="text-yellow-700 text-sm">No hay fotos disponibles para esta visita</p>
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
-
-          {/* Productos y Fotos */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Building size={20} />
-                Productos Mencionados
-              </h3>
-              {visita.productos && visita.productos.length > 0 ? (
-                <div className="space-y-2">
-                  {visita.productos.map((producto, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <span className="text-blue-600 font-medium">{index + 1}</span>
-                      </div>
-                      <span className="text-gray-700">{producto}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Building className="text-gray-400" size={24} />
-                  </div>
-                  <p className="text-gray-600">No se mencionaron productos en esta visita</p>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Camera size={20} />
-                Fotos de la Visita
-              </h3>
-              {visita.fotos > 0 ? (
-                <div className="grid grid-cols-2 gap-4">
-                  {visita.fotosUrls && visita.fotosUrls.length > 0 ? (
-                    visita.fotosUrls.map((url, index) => (
-                      <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-                        <div className="w-full h-full flex items-center justify-center">
-                          <div className="text-center">
-                            <Camera className="text-gray-400 mx-auto mb-2" size={24} />
-                            <p className="text-sm text-gray-500">Foto {index + 1}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="col-span-2 text-center py-8">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Camera className="text-gray-400" size={24} />
-                      </div>
-                      <p className="text-gray-600">{visita.fotos} {visita.fotos === 1 ? 'foto' : 'fotos'} registradas</p>
-                      <p className="text-sm text-gray-500 mt-1">Las fotos se almacenan en el servidor</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Camera className="text-gray-400" size={24} />
-                  </div>
-                  <p className="text-gray-600">No hay fotos registradas para esta visita</p>
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Información adicional */}
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Información Adicional</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+              <h3 className="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2">
+                <Calendar size={20} />
+                Información Técnica
+              </h3>
               <div className="space-y-3">
-                <h4 className="font-medium text-gray-900">Detalles Técnicos</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">ID Promotor:</span>
-                    <span className="font-medium text-gray-900">#{visita.promotorId}</span>
+                <div className="flex justify-between">
+                  <span className="text-sm text-blue-700">ID de Visita:</span>
+                  <span className="font-mono text-sm text-blue-900">{visita.id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-blue-700">Cliente:</span>
+                  <div className="text-right">
+                    <span className="text-sm text-blue-900 font-medium">{visita.cliente}</span>
+                    <div className="text-xs text-blue-600 font-mono">ID: {visita.clienteId}</div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Estado del Sistema:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(visita.estado)}`}>
-                      {visita.estado}
-                    </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-blue-700">Promotor:</span>
+                  <div className="text-right">
+                    <span className="text-sm text-blue-900 font-medium">{visita.promotor}</span>
+                    <div className="text-xs text-blue-600 font-mono">ID: {visita.promotorId}</div>
                   </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-blue-700">Fecha de Creación:</span>
+                  <span className="text-sm text-blue-900">{formatFecha(visita.createdAt)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-blue-700">Última Actualización:</span>
+                  <span className="text-sm text-blue-900">{formatFecha(visita.updatedAt)}</span>
                 </div>
               </div>
+            </div>
 
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Acciones</h3>
               <div className="space-y-3">
-                <h4 className="font-medium text-gray-900">Coordenadas GPS</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Latitud:</span>
-                    <span className="font-medium text-gray-900">{visita.lat?.toFixed(6) || 'No disponible'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Longitud:</span>
-                    <span className="font-medium text-gray-900">{visita.lng?.toFixed(6) || 'No disponible'}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="font-medium text-gray-900">Metadatos</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Fecha Completa:</span>
-                    <span className="font-medium text-gray-900">{formatFecha(visita.createdAt)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Última Actualización:</span>
-                    <span className="font-medium text-gray-900">{formatFecha(visita.updatedAt)}</span>
-                  </div>
-                </div>
+                <Link
+                  href="/mis-visitas"
+                  className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft size={18} />
+                  Volver a Mis Visitas
+                </Link>
+                <button
+                  onClick={() => loadVisita(visitaId)}
+                  className="w-full px-4 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center justify-center gap-2"
+                >
+                  <RefreshCw size={18} />
+                  Actualizar Información
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full px-4 py-3 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors flex items-center justify-center gap-2"
+                >
+                  <RefreshCw size={18} />
+                  Recargar Página
+                </button>
               </div>
             </div>
           </div>
         </div>
       </main>
-      
+
       {/* Footer */}
       <footer className="mt-12 bg-white border-t border-gray-200 py-6 print:hidden">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
               <p className="text-gray-600">
-                Detalles de Visita • ID: {visita.id}
+                Sistema de Gestión de Visitas • Detalles de Visita
               </p>
               <p className="text-sm text-gray-500">
                 Usuario: {userInfo?.name || userInfo?.username} • Rol: {userInfo?.role}
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              <button className="text-sm text-gray-600 hover:text-gray-900">
-                Ayuda
-              </button>
-              <button className="text-sm text-gray-600 hover:text-gray-900">
-                Soporte
-              </button>
+              <p className="text-sm text-gray-500">
+                Generado: {new Date().toLocaleDateString('es-ES', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* Modal para visualización de imágenes */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-5xl w-full p-4">
+            <button
+              className="absolute top-2 right-2 text-white text-3xl hover:text-gray-300 transition-colors"
+              onClick={() => setSelectedImage(null)}
+            >
+              ✕
+            </button>
+            <img
+              src={selectedImage}
+              alt="Imagen ampliada"
+              className="max-h-[90vh] w-auto mx-auto rounded-lg"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,22 +1,23 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Camera, X, RotateCw, AlertCircle, CheckCircle } from "lucide-react";
+import { Camera, X, RotateCw, AlertCircle, CheckCircle, Upload } from "lucide-react";
 
 interface CameraCaptureProps {
-  onCapture: (imageBase64: string) => void;
+  onCapture: (file: File) => void;
   label?: string;
   required?: boolean;
-  initialImage?: string | null;
+  initialFile?: File | null;
 }
 
 export default function CameraCapture({
   onCapture,
   label = "Captura de Foto",
   required = false,
-  initialImage = null,
+  initialFile = null,
 }: CameraCaptureProps) {
-  const [photo, setPhoto] = useState<string | null>(initialImage);
+  const [photoFile, setPhotoFile] = useState<File | null>(initialFile);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isLoadingCamera, setIsLoadingCamera] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -25,14 +26,31 @@ export default function CameraCapture({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   // Limpiar stream al desmontar
   useEffect(() => {
     return () => {
       stopCamera();
+      if (photoPreview) {
+        URL.revokeObjectURL(photoPreview);
+      }
     };
   }, []);
+
+  // Actualizar preview cuando cambia el archivo
+  useEffect(() => {
+    if (photoFile) {
+      const previewUrl = URL.createObjectURL(photoFile);
+      setPhotoPreview(previewUrl);
+      return () => {
+        URL.revokeObjectURL(previewUrl);
+      };
+    } else {
+      setPhotoPreview(null);
+    }
+  }, [photoFile]);
 
   const startCamera = async () => {
     console.log("Intentando activar cámara...");
@@ -149,18 +167,31 @@ export default function CameraCapture({
 
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Convertir a base64
-    const imageBase64 = canvas.toDataURL("image/jpeg", 0.9);
-    
-    setPhoto(imageBase64);
-    onCapture(imageBase64);
-    setSuccess("✅ Foto capturada exitosamente");
-    stopCamera();
+    // Convertir canvas a Blob y luego a File
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      
+      const file = new File([blob], `foto_${Date.now()}.jpg`, {
+        type: "image/jpeg",
+        lastModified: Date.now(),
+      });
+      
+      setPhotoFile(file);
+      onCapture(file);
+      setSuccess("✅ Foto capturada exitosamente");
+      stopCamera();
+    }, "image/jpeg", 0.9);
   };
 
   const selectFromGallery = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
+    }
+  };
+
+  const useCameraInput = () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
     }
   };
 
@@ -177,19 +208,33 @@ export default function CameraCapture({
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageBase64 = e.target?.result as string;
-        setPhoto(imageBase64);
-        onCapture(imageBase64);
-        setSuccess("✅ Foto seleccionada exitosamente");
-      };
-      reader.readAsDataURL(file);
+      setPhotoFile(file);
+      onCapture(file);
+      setSuccess("✅ Foto seleccionada exitosamente");
+    }
+  };
+
+  const handleCameraInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        setError("Por favor selecciona un archivo de imagen válido");
+        return;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        setError("La imagen es demasiado grande. Máximo 10MB");
+        return;
+      }
+
+      setPhotoFile(file);
+      onCapture(file);
+      setSuccess("✅ Foto capturada con cámara del dispositivo");
     }
   };
 
   const removePhoto = () => {
-    setPhoto(null);
+    setPhotoFile(null);
     setError(null);
     setSuccess(null);
     stopCamera();
@@ -209,7 +254,7 @@ export default function CameraCapture({
           {required && <span className="text-red-500 ml-1">*</span>}
         </h2>
         <div className="flex gap-2">
-          {!photo && (
+          {!photoFile && (
             <>
               <button
                 onClick={startCamera}
@@ -230,6 +275,13 @@ export default function CameraCapture({
                 )}
               </button>
               <button
+                onClick={useCameraInput}
+                className="px-4 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
+              >
+                <Camera size={16} />
+                Usar Cámara
+              </button>
+              <button
                 onClick={selectFromGallery}
                 className="px-4 py-2 rounded-lg font-medium bg-purple-600 text-white hover:bg-purple-700"
               >
@@ -237,7 +289,7 @@ export default function CameraCapture({
               </button>
             </>
           )}
-          {photo && (
+          {photoFile && (
             <button
               onClick={retakePhoto}
               className="px-4 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700"
@@ -252,10 +304,18 @@ export default function CameraCapture({
             className="hidden"
             onChange={handleFileSelect}
           />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleCameraInput}
+          />
         </div>
       </div>
 
-      {!photo && (
+      {!photoFile && (
         <div className="relative bg-black rounded-xl overflow-hidden mb-4">
           <video
             ref={videoRef}
@@ -288,10 +348,10 @@ export default function CameraCapture({
         </div>
       )}
 
-      {photo && (
+      {photoFile && photoPreview && (
         <div className="relative bg-gray-100 rounded-xl overflow-hidden mb-4">
           <img
-            src={photo}
+            src={photoPreview}
             alt="Foto capturada"
             className="w-full h-64 object-contain"
           />
@@ -302,7 +362,7 @@ export default function CameraCapture({
             <X size={20} />
           </button>
           <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
-            Foto capturada
+            {photoFile.name} ({(photoFile.size / 1024).toFixed(1)} KB)
           </div>
         </div>
       )}
@@ -310,10 +370,10 @@ export default function CameraCapture({
       <div className="text-sm text-gray-600 space-y-2">
         <p>💡 <strong>Instrucciones:</strong></p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Presiona "Activar Cámara" para activar la cámara trasera</li>
-          <li>Presiona "Capturar Foto" para tomar la imagen</li>
-          <li>O usa "Galería" para seleccionar una foto existente</li>
-          <li>La foto se mostrará en preview</li>
+          <li>Presiona "Activar Cámara" para activar la cámara trasera y tomar foto manualmente</li>
+          <li>Presiona "Usar Cámara" para usar la cámara nativa del dispositivo</li>
+          <li>Presiona "Galería" para seleccionar una foto existente</li>
+          <li>La foto se mostrará en preview y se enviará como archivo</li>
         </ul>
       </div>
 
@@ -341,7 +401,7 @@ export default function CameraCapture({
         </div>
       )}
 
-      {required && !photo && (
+      {required && !photoFile && (
         <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-yellow-800 text-sm">
             ⚠️ Este campo es requerido. Por favor captura o selecciona una foto.

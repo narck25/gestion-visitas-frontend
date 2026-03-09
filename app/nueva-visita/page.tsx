@@ -24,8 +24,8 @@ interface VisitData {
   clienteId: number | null;
   notas: string;
   location: { lat: number; lng: number; accuracy: number } | null;
-  fotoAntes: { file: File; url: string; base64: string } | null;
-  fotoDespues: { file: File; url: string; base64: string } | null;
+  fotoAntes: File | null;
+  fotoDespues: File | null;
 }
 
 export default function NuevaVisitaPage() {
@@ -105,54 +105,18 @@ export default function NuevaVisitaPage() {
   }, [currentStep]);
 
   // Función para manejar captura de foto ANTES
-  const handleFotoAntesCapture = (imageBase64: string) => {
-    // Convertir base64 a Blob y luego a File
-    const base64Data = imageBase64.split(',')[1];
-    const binaryData = atob(base64Data);
-    const arrayBuffer = new ArrayBuffer(binaryData.length);
-    const uint8Array = new Uint8Array(arrayBuffer);
-    
-    for (let i = 0; i < binaryData.length; i++) {
-      uint8Array[i] = binaryData.charCodeAt(i);
-    }
-    
-    const blob = new Blob([uint8Array], { type: 'image/jpeg' });
-    const file = new File([blob], `foto_antes_${Date.now()}.jpg`, {
-      type: "image/jpeg",
-      lastModified: Date.now(),
-    });
-    
-    const url = URL.createObjectURL(blob);
-    
+  const handleFotoAntesCapture = (file: File) => {
     setVisitData({
       ...visitData,
-      fotoAntes: { file, url, base64: imageBase64 }
+      fotoAntes: file
     });
   };
 
   // Función para manejar captura de foto DESPUÉS
-  const handleFotoDespuesCapture = (imageBase64: string) => {
-    // Convertir base64 a Blob y luego a File
-    const base64Data = imageBase64.split(',')[1];
-    const binaryData = atob(base64Data);
-    const arrayBuffer = new ArrayBuffer(binaryData.length);
-    const uint8Array = new Uint8Array(arrayBuffer);
-    
-    for (let i = 0; i < binaryData.length; i++) {
-      uint8Array[i] = binaryData.charCodeAt(i);
-    }
-    
-    const blob = new Blob([uint8Array], { type: 'image/jpeg' });
-    const file = new File([blob], `foto_despues_${Date.now()}.jpg`, {
-      type: "image/jpeg",
-      lastModified: Date.now(),
-    });
-    
-    const url = URL.createObjectURL(blob);
-    
+  const handleFotoDespuesCapture = (file: File) => {
     setVisitData({
       ...visitData,
-      fotoDespues: { file, url, base64: imageBase64 }
+      fotoDespues: file
     });
   };
 
@@ -180,7 +144,7 @@ export default function NuevaVisitaPage() {
     setCurrentStep(step);
   };
 
-  // Enviar visita a la API
+  // Enviar visita a la API usando multipart/form-data
   const handleSubmit = async () => {
     setIsSending(true);
     setError(null);
@@ -205,7 +169,7 @@ export default function NuevaVisitaPage() {
 
       // Importar módulos necesarios
       const { getOrCreateClient } = await import("@/lib/clients");
-      const { createVisit } = await import("@/lib/visits");
+      const { createVisitMultipart } = await import("@/lib/visits");
 
       // 1. Obtener o crear cliente
       let clientId = visitData.clienteId;
@@ -213,22 +177,35 @@ export default function NuevaVisitaPage() {
         clientId = await getOrCreateClient(visitData.cliente.trim());
       }
 
-      // 2. Crear la visita con todas las imágenes incluidas
-      await createVisit({
-        clientId: clientId.toString(),
-        notes: visitData.notas || "",
-        latitude: visitData.location.lat,
-        longitude: visitData.location.lng,
-        beforePhotos: visitData.fotoAntes ? [visitData.fotoAntes.base64] : [],
-        afterPhotos: visitData.fotoDespues ? [visitData.fotoDespues.base64] : [],
-      });
+      // 2. Crear FormData según los requisitos
+      const formData = new FormData();
+
+      formData.append("clientId", clientId.toString());
+      
+      // Solo enviar notes si no está vacío
+      if (visitData.notas && visitData.notas.trim() !== '') {
+        formData.append("notes", visitData.notas);
+      }
+
+      // Agregar latitud y longitud si están disponibles
+      if (visitData.location) {
+        formData.append("latitude", visitData.location.lat.toString());
+        formData.append("longitude", visitData.location.lng.toString());
+      }
+
+      if (visitData.fotoAntes) {
+        formData.append("beforePhotos", visitData.fotoAntes);
+      }
+
+      if (visitData.fotoDespues) {
+        formData.append("afterPhotos", visitData.fotoDespues);
+      }
+
+      // 3. Crear la visita usando multipart/form-data
+      await createVisitMultipart(formData);
 
       setSuccess(true);
       setIsSending(false);
-      
-      // Limpiar recursos de imágenes
-      if (visitData.fotoAntes) URL.revokeObjectURL(visitData.fotoAntes.url);
-      if (visitData.fotoDespues) URL.revokeObjectURL(visitData.fotoDespues.url);
       
     } catch (err: any) {
       console.error("Error al enviar visita:", err);
@@ -303,8 +280,7 @@ export default function NuevaVisitaPage() {
   // Limpiar recursos
   useEffect(() => {
     return () => {
-      if (visitData.fotoAntes) URL.revokeObjectURL(visitData.fotoAntes.url);
-      if (visitData.fotoDespues) URL.revokeObjectURL(visitData.fotoDespues.url);
+      // No hay URLs para revocar ya que usamos File objects directamente
     };
   }, []);
 
@@ -550,7 +526,7 @@ export default function NuevaVisitaPage() {
             onCapture={handleFotoAntesCapture}
             label="Foto ANTES"
             required={true}
-            initialImage={visitData.fotoAntes?.base64 || null}
+            initialFile={visitData.fotoAntes}
           />
         )}
 
@@ -560,7 +536,7 @@ export default function NuevaVisitaPage() {
             onCapture={handleFotoDespuesCapture}
             label="Foto DESPUÉS"
             required={true}
-            initialImage={visitData.fotoDespues?.base64 || null}
+            initialFile={visitData.fotoDespues}
           />
         )}
 
@@ -596,21 +572,31 @@ export default function NuevaVisitaPage() {
                 <div>
                   <h3 className="text-sm font-medium text-gray-600 mb-2">Foto ANTES</h3>
                   {visitData.fotoAntes && (
-                    <img
-                      src={visitData.fotoAntes.url}
-                      alt="Foto Antes"
-                      className="w-full h-40 object-cover rounded-lg"
-                    />
+                    <div className="relative bg-gray-100 rounded-lg overflow-hidden h-40">
+                      <img
+                        src={URL.createObjectURL(visitData.fotoAntes)}
+                        alt="Foto Antes"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                        {visitData.fotoAntes.name}
+                      </div>
+                    </div>
                   )}
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-600 mb-2">Foto DESPUÉS</h3>
                   {visitData.fotoDespues && (
-                    <img
-                      src={visitData.fotoDespues.url}
-                      alt="Foto Después"
-                      className="w-full h-40 object-cover rounded-lg"
-                    />
+                    <div className="relative bg-gray-100 rounded-lg overflow-hidden h-40">
+                      <img
+                        src={URL.createObjectURL(visitData.fotoDespues)}
+                        alt="Foto Después"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                        {visitData.fotoDespues.name}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
