@@ -170,11 +170,11 @@ export class ApiClient {
 
   // Promotores (para supervisores)
   async getPromotores() {
-    return this.get('/promotores');
+    return this.get('/api/users/promoters');
   }
 
   async getPromotor(id: number) {
-    return this.get(`/promotores/${id}`);
+    return this.get(`/api/users/promoters/${id}`);
   }
 
   // Reportes

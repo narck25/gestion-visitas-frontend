@@ -219,9 +219,9 @@ export default function NuevaVisitaPage() {
     const loadClients = async () => {
       try {
         setIsLoadingClients(true);
-        const clientsData = await getClients();
-        setClients(clientsData);
-        setFilteredClients(clientsData);
+        const response = await getClients(1, 1000); // Obtener todos los clientes
+        setClients(response.clients);
+        setFilteredClients(response.clients);
       } catch (error) {
         console.error("Error al cargar clientes:", error);
         setError("No se pudieron cargar los clientes. Intenta de nuevo.");

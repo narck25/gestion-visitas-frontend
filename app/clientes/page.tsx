@@ -66,9 +66,9 @@ function ClientesContent() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getClients();
-      setClients(data);
-      setFilteredClients(data);
+      const response = await getClients(1, 1000); // Obtener todos los clientes
+      setClients(response.clients);
+      setFilteredClients(response.clients);
     } catch (err: any) {
       setError(err.message || "Error al cargar clientes");
       console.error("Error loading clients:", err);
@@ -147,10 +147,17 @@ function ClientesContent() {
       }));
 
       // Fetch promotores
-      const promotores = await apiClient.getPromotores();
+      const response = await apiClient.getPromotores();
+      console.log("RESPUESTA PROMOTORES:", response);
+      
+      // Extraer el array de promotores de la respuesta
+      // La respuesta puede ser: { success: true, data: [...] } o directamente el array
+      const promotores = response.data || response || [];
+      console.log("PROMOTORES ARRAY:", promotores);
+      
       setAssignModal(prev => ({
         ...prev,
-        promotores: promotores || [],
+        promotores: Array.isArray(promotores) ? promotores : [],
         loading: false
       }));
     } catch (err: any) {
