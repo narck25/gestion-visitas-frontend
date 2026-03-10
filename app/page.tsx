@@ -208,6 +208,14 @@ export default function Home() {
             >
               📸 Demo Captura
             </Link>
+            {userInfo && (userInfo.role === 'ADMIN' || userInfo.role === 'SUPERVISOR' || userInfo.role === 'PROMOTOR') && (
+              <Link 
+                href="/pedidos/nuevo" 
+                className="px-8 py-4 bg-red-600 text-white text-lg font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg"
+              >
+                🛒 Nuevo Pedido
+              </Link>
+            )}
             {userInfo?.role === 'ADMIN' && (
               <Link 
                 href="/admin" 
