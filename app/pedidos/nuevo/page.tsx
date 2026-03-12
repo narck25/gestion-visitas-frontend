@@ -615,36 +615,49 @@ function NuevoPedidoContent() {
                     <div className="space-y-3">
                       {/* Cálculo de impuestos */}
                       {item.sku && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                          <h4 className="font-medium text-blue-900 mb-2">Cálculo de impuestos:</h4>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <h4 className="font-semibold text-blue-800 mb-3">
+                            Cálculo de impuestos
+                          </h4>
                           {(() => {
                             const producto = products.find(p => p.sku === item.sku);
                             const calculo = calcularImpuestos(producto, item.cantidad);
                             const ivaPorcentaje = producto?.porcentajeIVA || 0;
                             const iepsPorcentaje = producto?.porcentajeIEPS || 0;
+                            const subtotal = calculo.base + calculo.montoIEPS;
                             
                             return (
-                              <div className="space-y-1 text-sm">
-                                <div className="flex justify-between">
-                                  <span className="text-gray-700">Precio base:</span>
-                                  <span className="font-medium">${calculo.base.toFixed(2)}</span>
-                                </div>
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                <span className="text-gray-700">Precio base:</span>
+                                <span className="text-right font-medium">${calculo.base.toFixed(2)}</span>
+
                                 {iepsPorcentaje > 0 && (
-                                  <div className="flex justify-between">
+                                  <>
                                     <span className="text-gray-700">IEPS ({iepsPorcentaje}%):</span>
-                                    <span className="font-medium text-orange-600">${calculo.montoIEPS.toFixed(2)}</span>
-                                  </div>
+                                    <span className="text-right text-orange-600 font-medium">
+                                      ${calculo.montoIEPS.toFixed(2)}
+                                    </span>
+                                  </>
                                 )}
+
+                                <span className="text-gray-700 font-medium">Subtotal:</span>
+                                <span className="text-right font-medium border-t border-gray-300 pt-1">
+                                  ${subtotal.toFixed(2)}
+                                </span>
+
                                 {ivaPorcentaje > 0 && (
-                                  <div className="flex justify-between">
+                                  <>
                                     <span className="text-gray-700">IVA ({ivaPorcentaje}%):</span>
-                                    <span className="font-medium text-green-600">${calculo.montoIVA.toFixed(2)}</span>
-                                  </div>
+                                    <span className="text-right text-blue-600 font-medium">
+                                      ${calculo.montoIVA.toFixed(2)}
+                                    </span>
+                                  </>
                                 )}
-                                <div className="flex justify-between pt-1 border-t border-blue-200">
-                                  <span className="font-medium text-gray-900">Precio final:</span>
-                                  <span className="font-bold text-blue-900">${calculo.precioFinal.toFixed(2)}</span>
-                                </div>
+
+                                <span className="font-bold text-gray-900">Precio final:</span>
+                                <span className="text-right font-bold text-green-600 border-t border-gray-300 pt-1">
+                                  ${calculo.precioFinal.toFixed(2)}
+                                </span>
                               </div>
                             );
                           })()}
