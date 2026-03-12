@@ -1,6 +1,8 @@
 // Interceptor global de errores para producción
 // Este archivo maneja errores globales y proporciona logging seguro para producción
 
+import { apiFetch } from './api';
+
 // Tipos de errores
 export type ErrorSeverity = 'low' | 'medium' | 'high' | 'critical';
 
@@ -69,10 +71,10 @@ export function logError(
 // Función para enviar errores a servicio de monitoreo (placeholder)
 function sendToMonitoringService(error: AppError): void {
   // Implementación real dependería del servicio de monitoreo elegido
-  // Ejemplo con fetch:
+  // Ejemplo con apiFetch:
   /*
   try {
-    fetch('/api/log-error', {
+    apiFetch('/api/log-error', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(error),

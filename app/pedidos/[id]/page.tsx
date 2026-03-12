@@ -270,8 +270,8 @@ function DetallePedidoContent() {
       setFolioError(null);
       setFolioSuccess(null);
       
-      const response = await fetch(
-        `http://localhost:3001/api/orders/${pedido.id}/complete`,
+      const response = await apiFetch(
+        `/api/orders/${pedido.id}/complete`,
         {
           method: "PATCH",
           headers: {
@@ -313,8 +313,8 @@ function DetallePedidoContent() {
     setFolioSuccess(null);
 
     try {
-      const response = await fetch(
-        `http://localhost:3001/api/orders/${pedido?.id}/complete`,
+      const response = await apiFetch(
+        `/api/orders/${pedido?.id}/complete`,
         {
           method: "PATCH",
           headers: {
