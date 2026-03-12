@@ -72,6 +72,10 @@ function NuevoPedidoContent() {
         descripcion: "",
         cantidad: 1,
         precio: 0,
+        precioBase: 0,
+        montoIEPS: 0,
+        montoIVA: 0,
+        precioFinal: 0,
         total: 0,
         productId: "" // Agregar productId para enviar al backend
       }
@@ -198,15 +202,31 @@ function NuevoPedidoContent() {
       // Buscar producto por SKU en los resultados filtrados
       const producto = products.find(p => p.sku === value);
       if (producto) {
+        const calculo = calcularImpuestos(producto, newItems[index].cantidad);
         newItems[index].descripcion = producto.description;
         newItems[index].precio = producto.price;
-        newItems[index].total = newItems[index].cantidad * producto.price;
+        newItems[index].precioBase = calculo.base;
+        newItems[index].montoIEPS = calculo.montoIEPS;
+        newItems[index].montoIVA = calculo.montoIVA;
+        newItems[index].precioFinal = calculo.precioFinal;
+        newItems[index].total = calculo.precioFinal; // Usar precio final con impuestos
         newItems[index].productId = producto.id.toString(); // Guardar productId
       }
     } else if (field === "cantidad") {
       const cantidad = parseInt(value) || 0;
       newItems[index].cantidad = cantidad;
-      newItems[index].total = cantidad * newItems[index].precio;
+      // Recalcular impuestos con nueva cantidad
+      const producto = products.find(p => p.sku === newItems[index].sku);
+      if (producto) {
+        const calculo = calcularImpuestos(producto, cantidad);
+        newItems[index].precioBase = calculo.base;
+        newItems[index].montoIEPS = calculo.montoIEPS;
+        newItems[index].montoIVA = calculo.montoIVA;
+        newItems[index].precioFinal = calculo.precioFinal;
+        newItems[index].total = calculo.precioFinal; // Usar precio final con impuestos
+      } else {
+        newItems[index].total = cantidad * newItems[index].precio;
+      }
     }
 
     setFormData({
@@ -217,10 +237,15 @@ function NuevoPedidoContent() {
 
   const selectProducto = (index: number, producto: Producto) => {
     const newItems = [...formData.items];
+    const calculo = calcularImpuestos(producto, newItems[index].cantidad);
     newItems[index].sku = producto.sku;
     newItems[index].descripcion = producto.description;
     newItems[index].precio = producto.price;
-    newItems[index].total = newItems[index].cantidad * producto.price;
+    newItems[index].precioBase = calculo.base;
+    newItems[index].montoIEPS = calculo.montoIEPS;
+    newItems[index].montoIVA = calculo.montoIVA;
+    newItems[index].precioFinal = calculo.precioFinal;
+    newItems[index].total = calculo.precioFinal; // Usar precio final con impuestos
     newItems[index].productId = producto.id.toString(); // Guardar productId
     
     setFormData({
@@ -242,6 +267,10 @@ function NuevoPedidoContent() {
           descripcion: "",
           cantidad: 1,
           precio: 0,
+          precioBase: 0,
+          montoIEPS: 0,
+          montoIVA: 0,
+          precioFinal: 0,
           total: 0,
           productId: ""
         }
@@ -622,13 +651,15 @@ function NuevoPedidoContent() {
                         </div>
                       )}
                       
-                      <div className="flex justify-between items-center">
-                        <div>
+                      <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-600">Cantidad: <span className="font-medium">{item.cantidad}</span></p>
                           <p className="text-sm text-gray-600">Precio unitario: ${Number(item.precio || 0).toFixed(2)}</p>
                           <p className="text-sm text-gray-600">Total línea: ${Number(item.total || 0).toFixed(2)}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-gray-900">${Number(item.total || 0).toFixed(2)}</p>
+                          <p className="text-xs text-gray-500">Total con impuestos</p>
                         </div>
                       </div>
                     </div>
