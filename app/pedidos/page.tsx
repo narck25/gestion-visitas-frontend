@@ -30,55 +30,25 @@ import {
   ShoppingCart
 } from "lucide-react";
 import { getUserInfo, hasAnyRole } from "@/lib/auth";
+import { apiFetch } from "@/lib/api";
 
-// Datos de ejemplo para pedidos
-const pedidosEjemplo = [
-  {
-    id: '1',
-    cliente: 'Juan Pérez',
-    fecha: '2024-03-09',
-    total: 1250.50,
-    estado: 'pendiente',
-    items: 3,
-    clienteId: 1,
-    notas: 'Pedido urgente para fin de semana',
-  },
-  {
-    id: '2',
-    cliente: 'María García',
-    fecha: '2024-03-08',
-    total: 890.75,
-    estado: 'completado',
-    items: 2,
-    clienteId: 2,
-    notas: 'Pedido regular',
-  },
-  {
-    id: '3',
-    cliente: 'Carlos López',
-    fecha: '2024-03-07',
-    total: 2150.00,
-    estado: 'en_proceso',
-    items: 5,
-    clienteId: 3,
-    notas: 'Pedido grande con descuento',
-  },
-  {
-    id: '4',
-    cliente: 'Ana Martínez',
-    fecha: '2024-03-06',
-    total: 750.25,
-    estado: 'cancelado',
-    items: 1,
-    clienteId: 4,
-    notas: 'Cliente canceló por falta de stock',
-  },
-];
+
+// Definir tipo para pedidos
+interface Pedido {
+  id: string;
+  shortId: string;
+  cliente: string;
+  fecha: string;
+  total: number;
+  estado: string;
+  itemsCount: number;
+  notas?: string;
+}
 
 function PedidosContent() {
   const router = useRouter();
-  const [pedidos, setPedidos] = useState(pedidosEjemplo);
-  const [filteredPedidos, setFilteredPedidos] = useState(pedidosEjemplo);
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [filteredPedidos, setFilteredPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [userInfo, setUserInfo] = useState<{ username: string; name: string; role: string } | null>(null);
@@ -89,10 +59,64 @@ function PedidosContent() {
   });
   const [error, setError] = useState<string | null>(null);
 
+  // Función para obtener pedidos desde la API
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const rawOrders = await apiFetch<any>("/api/orders");
+      
+      // Debug: verificar estructura de respuesta
+      console.log("API /api/orders response:", rawOrders);
+      
+      // Extraer array de pedidos de diferentes estructuras de respuesta
+      let ordersArray: any[] = [];
+      
+      if (Array.isArray(rawOrders)) {
+        ordersArray = rawOrders;
+      } else if (Array.isArray(rawOrders?.orders)) {
+        ordersArray = rawOrders.orders;
+      } else if (Array.isArray(rawOrders?.data)) {
+        ordersArray = rawOrders.data;
+      } else if (Array.isArray(rawOrders?.data?.orders)) {
+        ordersArray = rawOrders.data.orders;
+      } else {
+        console.warn("Unexpected orders response structure:", rawOrders);
+      }
+      
+      console.log("Orders loaded:", ordersArray);
+      
+  // Normalizar estructura de pedidos
+  const pedidosData = ordersArray.map((o: any, index: number) => ({
+    id: o.id?.toString() || "",
+    shortId: `#${1000 + index + 1}`,
+    cliente: 
+      o.client?.businessName || 
+      o.client?.name || 
+      o.clientName || 
+      "Cliente no asignado",
+    fecha: o.createdAt || o.date || "",
+    total: Number(o.total || 0),
+    estado: o.status?.toLowerCase() || "pendiente",
+    itemsCount: o.items?.length || 0,
+    notas: o.notes || ""
+  }));
+      
+      setPedidos(pedidosData);
+      setFilteredPedidos(pedidosData);
+    } catch (error: any) {
+      console.error("Error:", error);
+      setError(error.message || "Error al cargar los pedidos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const user = getUserInfo();
     setUserInfo(user);
-    // En una implementación real, aquí cargaríamos los pedidos desde la API
+    fetchOrders();
   }, []);
 
   useEffect(() => {
@@ -267,7 +291,7 @@ function PedidosContent() {
               <div>
                 <p className="text-sm text-gray-500">Valor Total</p>
                 <p className="text-3xl font-bold text-green-600">
-                  ${pedidos.reduce((sum, pedido) => sum + pedido.total, 0).toFixed(2)}
+                  ${(Array.isArray(pedidos) ? pedidos : []).reduce((sum, pedido) => sum + Number(pedido.total || 0), 0).toFixed(2)}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -281,7 +305,7 @@ function PedidosContent() {
               <div>
                 <p className="text-sm text-gray-500">Promedio por Pedido</p>
                 <p className="text-3xl font-bold text-blue-600">
-                  ${(pedidos.reduce((sum, pedido) => sum + pedido.total, 0) / pedidos.length || 0).toFixed(2)}
+                  ${((Array.isArray(pedidos) ? pedidos : []).reduce((sum, pedido) => sum + Number(pedido.total || 0), 0) / (pedidos.length || 1)).toFixed(2)}
                 </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -317,7 +341,7 @@ function PedidosContent() {
             
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => setLoading(true)}
+                onClick={fetchOrders}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
               >
                 <RefreshCw size={18} />
@@ -400,7 +424,7 @@ function PedidosContent() {
                           <ShoppingCart className="text-purple-600" size={24} />
                         </div>
                         <div>
-                          <h3 className="font-bold text-gray-900 text-lg">Pedido #{pedido.id}</h3>
+                          <h3 className="font-bold text-gray-900 text-lg">Pedido {pedido.shortId}</h3>
                           <div className="flex flex-wrap gap-2 mt-1">
                             <span className="inline-flex items-center gap-1 text-sm text-gray-600">
                               <User size={14} />
@@ -425,7 +449,7 @@ function PedidosContent() {
                           </div>
                           <div>
                             <p className="text-sm text-gray-500">Items</p>
-                            <p className="font-medium text-gray-900">{pedido.items} productos</p>
+                            <p className="font-medium text-gray-900">{pedido.itemsCount} productos</p>
                           </div>
                         </div>
                         
@@ -435,7 +459,7 @@ function PedidosContent() {
                           </div>
                           <div>
                             <p className="text-sm text-gray-500">Total</p>
-                            <p className="font-medium text-gray-900">${pedido.total.toFixed(2)}</p>
+                            <p className="font-medium text-gray-900">${Number(pedido.total || 0).toFixed(2)}</p>
                           </div>
                         </div>
                         
@@ -444,8 +468,8 @@ function PedidosContent() {
                             <Building className="text-yellow-600" size={16} />
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500">Cliente ID</p>
-                            <p className="font-medium text-gray-900">{pedido.clienteId}</p>
+                            <p className="text-sm text-gray-500">Cliente</p>
+                            <p className="font-medium text-gray-900">{pedido.cliente}</p>
                           </div>
                         </div>
                       </div>

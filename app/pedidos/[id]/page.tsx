@@ -26,45 +26,42 @@ import {
   MapPin
 } from "lucide-react";
 import { getUserInfo, hasAnyRole } from "@/lib/auth";
+import { apiFetch } from "@/lib/api";
 
-// Datos de ejemplo para un pedido específico
-const pedidoEjemplo = {
-  id: '1',
-  cliente: 'Juan Pérez',
-  clienteId: 1,
-  fecha: '2024-03-09',
-  fechaCreacion: '2024-03-09 10:30:00',
-  fechaActualizacion: '2024-03-09 14:45:00',
-  total: 1250.50,
-  estado: 'pendiente',
-  notas: 'Pedido urgente para fin de semana. El cliente necesita los productos para el sábado.',
-  items: [
-    {
-      id: 1,
-      producto: 'Producto A',
-      descripcion: 'Descripción del producto A',
-      cantidad: 2,
-      precioUnitario: 250.75,
-      total: 501.50
-    },
-    {
-      id: 2,
-      producto: 'Producto B',
-      descripcion: 'Descripción del producto B',
-      cantidad: 1,
-      precioUnitario: 749.00,
-      total: 749.00
-    }
-  ],
-  clienteInfo: {
-    nombre: 'Juan Pérez',
-    email: 'juan.perez@email.com',
-    telefono: '+52 55 1234 5678',
-    direccion: 'Calle Principal 123, Ciudad de México',
-    contacto: 'Juan Pérez',
-    notas: 'Cliente preferente'
-  }
-};
+// Definir tipos para el pedido
+interface ProductoItem {
+  id: number;
+  product: {
+    sku: string;
+    description: string;
+    listPrice: number;
+  };
+  quantity: number;
+  total: number;
+}
+
+interface ClienteInfo {
+  nombre: string;
+  email?: string;
+  telefono?: string;
+  direccion?: string;
+  contacto?: string;
+  notas?: string;
+}
+
+interface Pedido {
+  id: string;
+  cliente: string;
+  clienteId: number;
+  fecha: string;
+  fechaCreacion: string;
+  fechaActualizacion: string;
+  total: number;
+  estado: string;
+  notas?: string;
+  items: ProductoItem[];
+  clienteInfo: ClienteInfo;
+}
 
 function DetallePedidoContent() {
   const router = useRouter();
@@ -73,20 +70,129 @@ function DetallePedidoContent() {
   
   const [userInfo, setUserInfo] = useState<{ username: string; name: string; role: string } | null>(null);
   const [loading, setLoading] = useState(false);
-  const [pedido, setPedido] = useState(pedidoEjemplo);
+  const [pedido, setPedido] = useState<Pedido | null>(null);
   const [showFolioModal, setShowFolioModal] = useState(false);
   const [folioIntelisis, setFolioIntelisis] = useState("");
   const [folioLoading, setFolioLoading] = useState(false);
   const [folioError, setFolioError] = useState<string | null>(null);
   const [folioSuccess, setFolioSuccess] = useState<string | null>(null);
 
+  // Función para obtener el pedido desde la API
+  const fetchOrder = async () => {
+    try {
+      setLoading(true);
+      const rawData = await apiFetch<any>(`/api/orders/${pedidoId}`);
+      
+      // DEBUG: Ver estructura de datos de la API
+      console.log("API Response rawData:", rawData);
+      if (rawData.items && Array.isArray(rawData.items)) {
+        console.log("First item structure:", rawData.items[0]);
+        if (rawData.items[0]?.product) {
+          console.log("Product structure:", rawData.items[0].product);
+        }
+      }
+      
+      // Normalizar datos del pedido
+      const pedidoData: Pedido = {
+        id: rawData.id?.toString() || pedidoId,
+        cliente: 
+          rawData.client?.businessName || 
+          rawData.client?.name || 
+          rawData.clientName || 
+          "Cliente",
+        clienteId: rawData.clientId || rawData.client?.id || 0,
+        fecha: rawData.createdAt || rawData.date || new Date().toISOString().split('T')[0],
+        fechaCreacion: rawData.createdAt || new Date().toISOString().replace('T', ' ').substring(0, 19),
+        fechaActualizacion: rawData.updatedAt || new Date().toISOString().replace('T', ' ').substring(0, 19),
+        total: Number(rawData.total || 0),
+        estado: rawData.status?.toLowerCase() || 'error',
+        notas: rawData.notes || undefined,
+        items: Array.isArray(rawData.items) ? rawData.items.map((item: any) => {
+          // DEBUG: Ver estructura de cada item
+          console.log("Processing item:", item);
+          
+          // Extraer precio de diferentes posibles ubicaciones en la respuesta
+          // Buscar en múltiples niveles de anidación
+          const listPrice = Number(
+            item.product?.listPrice || 
+            item.product?.price ||
+            item.listPrice || 
+            item.price || 
+            item.unitPrice || 
+            item.productPrice ||
+            (item.product && typeof item.product === 'object' ? 
+              item.product.listPrice || item.product.price || 0 : 0) ||
+            0
+          );
+          
+          const quantity = Number(item.quantity || 0);
+          // Usar cálculo preciso para evitar errores de redondeo de 1 centavo
+          const calculatedTotal = quantity * listPrice;
+          const total = Number(item.total || calculatedTotal);
+          
+          // Función para redondear a 2 decimales correctamente
+          const roundToTwoDecimals = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+          
+          console.log("Extracted listPrice:", listPrice, "from item:", {
+            'item.product?.listPrice': item.product?.listPrice,
+            'item.listPrice': item.listPrice,
+            'item.price': item.price,
+            'item.unitPrice': item.unitPrice
+          });
+          
+          return {
+            id: item.id || 0,
+            product: {
+              sku: item.product?.sku || item.productSku || item.sku || "",
+              description: item.product?.description || item.productDescription || item.description || "",
+              listPrice: listPrice
+            },
+            quantity: quantity,
+            total: total
+          };
+        }) : [],
+        clienteInfo: {
+          nombre: 
+            rawData.client?.businessName || 
+            rawData.client?.name || 
+            rawData.clientName || 
+            "Cliente",
+          email: rawData.client?.email || undefined,
+          telefono: rawData.client?.phone || undefined,
+          direccion: rawData.client?.address || undefined,
+          contacto: rawData.client?.contactPerson || undefined,
+          notas: rawData.client?.notes || undefined
+        }
+      };
+      
+      console.log("Processed pedidoData:", pedidoData);
+      setPedido(pedidoData);
+    } catch (error: any) {
+      console.error("Error cargando pedido:", error);
+      // Si hay error, mostrar un pedido vacío
+      setPedido({
+        id: pedidoId,
+        cliente: "Cliente no encontrado",
+        clienteId: 0,
+        fecha: new Date().toISOString().split('T')[0],
+        fechaCreacion: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        fechaActualizacion: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        total: 0,
+        estado: 'error',
+        items: [],
+        clienteInfo: {
+          nombre: "Cliente no encontrado"
+        }
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const user = getUserInfo();
     setUserInfo(user);
-    
-    // En una implementación real, aquí cargaríamos el pedido específico desde la API
-    // usando el pedidoId
-    console.log("Cargando pedido ID:", pedidoId);
+    fetchOrder();
   }, [pedidoId]);
 
   const getEstadoColor = (estado: string) => {
@@ -152,6 +258,50 @@ function DetallePedidoContent() {
     setShowFolioModal(true);
   };
 
+  const completeOrder = async () => {
+    if (!pedido) return;
+    
+    const folio = prompt("Ingrese folio de Intelisis");
+    
+    if (!folio) return;
+    
+    try {
+      setFolioLoading(true);
+      setFolioError(null);
+      setFolioSuccess(null);
+      
+      const response = await fetch(
+        `http://localhost:3001/api/orders/${pedido.id}/complete`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem('token') || ''}`
+          },
+          body: JSON.stringify({
+            intelisisFolio: folio
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+      }
+
+      // Actualizar el pedido después de completar
+      await fetchOrder();
+      
+      setFolioSuccess("Pedido finalizado exitosamente");
+      setShowFolioModal(false);
+      
+    } catch (err: any) {
+      setFolioError(err.message || "Error al finalizar el pedido");
+    } finally {
+      setFolioLoading(false);
+    }
+  };
+
   const handleGuardarFolio = async () => {
     if (!folioIntelisis.trim()) {
       setFolioError("Por favor ingresa el folio Intelisis");
@@ -163,20 +313,29 @@ function DetallePedidoContent() {
     setFolioSuccess(null);
 
     try {
-      // En una implementación real, aquí enviaríamos el folio a la API
-      console.log("Guardando folio Intelisis:", folioIntelisis);
+      const response = await fetch(
+        `http://localhost:3001/api/orders/${pedido?.id}/complete`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem('token') || ''}`
+          },
+          body: JSON.stringify({
+            intelisisFolio: folioIntelisis
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+      }
+
+      // Actualizar el pedido después de completar
+      await fetchOrder();
       
-      // Simular llamada a API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Actualizar estado del pedido a "CAPTURED"
-      setPedido({
-        ...pedido,
-        estado: 'captured',
-        fechaActualizacion: new Date().toISOString().replace('T', ' ').substring(0, 19)
-      });
-
-      setFolioSuccess("Folio guardado exitosamente. Estado actualizado a CAPTURED");
+      setFolioSuccess("Pedido finalizado exitosamente");
       
       // Cerrar modal después de 2 segundos
       setTimeout(() => {
@@ -186,7 +345,7 @@ function DetallePedidoContent() {
       }, 2000);
 
     } catch (err: any) {
-      setFolioError(err.message || "Error al guardar el folio");
+      setFolioError(err.message || "Error al finalizar el pedido");
     } finally {
       setFolioLoading(false);
     }
@@ -196,7 +355,17 @@ function DetallePedidoContent() {
     return userInfo?.role === 'CAPTURISTA';
   };
 
-  if (loading) {
+  // Función para redondear a 2 decimales correctamente (evita errores de 1 centavo)
+  const roundToTwoDecimals = (num: number) => {
+    return Math.round((num + Number.EPSILON) * 100) / 100;
+  };
+
+  // Función para formatear moneda con redondeo correcto
+  const formatCurrency = (amount: number) => {
+    return `$${roundToTwoDecimals(amount).toFixed(2)}`;
+  };
+
+  if (loading || !pedido) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -209,6 +378,9 @@ function DetallePedidoContent() {
     );
   }
 
+  // Generar ID corto para mostrar
+  const shortId = pedido.id.slice(0, 8);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -220,7 +392,7 @@ function DetallePedidoContent() {
                 <ShoppingCart className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Pedido #{pedido.id}</h1>
+                <h1 className="text-xl font-bold text-gray-900">Pedido #{shortId}</h1>
                 <p className="text-sm text-gray-600">
                   Detalles del pedido
                 </p>
@@ -246,7 +418,7 @@ function DetallePedidoContent() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-2xl font-bold text-gray-900">Pedido #{pedido.id}</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Pedido #{shortId}</h2>
                 <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getEstadoColor(pedido.estado)}`}>
                   {getEstadoIcon(pedido.estado)}
                   {getEstadoTexto(pedido.estado)}
@@ -298,7 +470,7 @@ function DetallePedidoContent() {
                 <p className="text-sm text-gray-500">Total del Pedido</p>
                 <p className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                   <DollarSign size={20} />
-                  ${pedido.total.toFixed(2)}
+                  ${Number(pedido.total || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -315,11 +487,11 @@ function DetallePedidoContent() {
               </div>
             </div>
 
-            {/* Información del cliente */}
+            {/* Información del pedido */}
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-500">Cliente ID</p>
-                <p className="font-medium text-gray-900">#{pedido.clienteId}</p>
+                <p className="text-sm text-gray-500">Estado</p>
+                <p className="font-medium text-gray-900">{getEstadoTexto(pedido.estado)}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Items en el pedido</p>
@@ -340,24 +512,32 @@ function DetallePedidoContent() {
                   <div key={item.id} className="p-4 border border-gray-200 rounded-lg">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h4 className="font-bold text-gray-900">{item.producto}</h4>
-                        {item.descripcion && (
-                          <p className="text-sm text-gray-600 mt-1">{item.descripcion}</p>
+                        <h4 className="font-bold text-gray-900">SKU: {item.product.sku}</h4>
+                        {item.product.description && (
+                          <p className="text-sm text-gray-600 mt-1">Descripción: {item.product.description}</p>
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">${item.total.toFixed(2)}</p>
+                        <p className="text-lg font-bold text-gray-900">{formatCurrency(item.total)}</p>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
                         <p className="text-sm text-gray-500">Cantidad</p>
-                        <p className="font-medium text-gray-900">{item.cantidad}</p>
+                        <p className="font-medium text-gray-900">{item.quantity}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Precio Unitario</p>
-                        <p className="font-medium text-gray-900">${item.precioUnitario.toFixed(2)}</p>
+                        <p className="font-medium text-gray-900">{formatCurrency(item.product.listPrice)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Subtotal</p>
+                        <p className="font-medium text-gray-900">{formatCurrency(item.total)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Cálculo</p>
+                        <p className="font-medium text-gray-900">{item.quantity} × {formatCurrency(item.product.listPrice)}</p>
                       </div>
                     </div>
                   </div>
@@ -369,7 +549,7 @@ function DetallePedidoContent() {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-sm text-gray-600">Subtotal</p>
-                    <p className="text-2xl font-bold text-gray-900">${pedido.total.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-gray-900">${Number(pedido.total || 0).toFixed(2)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-600">Total de items</p>
@@ -521,13 +701,22 @@ function DetallePedidoContent() {
 
                 {/* Botón para CAPTURISTA */}
                 {isCapturista() && pedido.estado !== 'captured' && (
-                  <button
-                    onClick={handleFinalizarCaptura}
-                    className="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle size={18} />
-                    Finalizar captura
-                  </button>
+                  <>
+                    <button
+                      onClick={handleFinalizarCaptura}
+                      className="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle size={18} />
+                      Finalizar captura (con modal)
+                    </button>
+                    <button
+                      onClick={completeOrder}
+                      className="w-full px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle size={18} />
+                      Finalizar captura (con prompt)
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -606,7 +795,7 @@ function DetallePedidoContent() {
               <div className="p-4 bg-gray-50 rounded-lg mb-6">
                 <div className="flex justify-between items-center mb-2">
                   <p className="text-sm text-gray-600">Total del pedido:</p>
-                  <p className="font-bold text-gray-900">${pedido.total.toFixed(2)}</p>
+                  <p className="font-bold text-gray-900">${Number(pedido.total || 0).toFixed(2)}</p>
                 </div>
                 <div className="flex justify-between items-center">
                   <p className="text-sm text-gray-600">Items:</p>
@@ -659,7 +848,7 @@ function DetallePedidoContent() {
                 Detalles del Pedido #{pedido.id} • {userInfo?.role || 'Usuario'}
               </p>
               <p className="text-sm text-gray-500">
-                Estado: {getEstadoTexto(pedido.estado)} • Total: ${pedido.total.toFixed(2)}
+                Estado: {getEstadoTexto(pedido.estado)} • Total: ${Number(pedido.total || 0).toFixed(2)}
               </p>
             </div>
             <div className="flex items-center space-x-4">

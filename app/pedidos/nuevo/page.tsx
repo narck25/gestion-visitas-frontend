@@ -23,26 +23,26 @@ import {
   List
 } from "lucide-react";
 import { getUserInfo } from "@/lib/auth";
+import { apiFetch } from "@/lib/api";
 
-// Productos de ejemplo con SKU y descripción
-const productosEjemplo = [
-  { sku: "DEXTRO 08", descripcion: "Dextrosa Monohidratada 08", precio: 150.00 },
-  { sku: "DEXTRO 09", descripcion: "Dextrosa Monohidratada 09", precio: 165.00 },
-  { sku: "DEXTRO 11", descripcion: "Dextrosa Monohidratada 11", precio: 180.00 },
-  { sku: "GLUCOSA 01", descripcion: "Glucosa Anhidra 01", precio: 200.00 },
-  { sku: "GLUCOSA 02", descripcion: "Glucosa Anhidra 02", precio: 220.00 },
-  { sku: "FRUCTOSA 05", descripcion: "Fructosa Cristalina 05", precio: 250.00 },
-  { sku: "MALTOSA 03", descripcion: "Maltosa Monohidratada 03", precio: 190.00 },
-  { sku: "SACAROSA 07", descripcion: "Sacarosa Refinada 07", precio: 120.00 },
-];
+// Definir tipo para productos
+interface Producto {
+  id: number;
+  sku: string;
+  description: string;
+  price: number;
+}
 
-// Clientes de ejemplo
-const clientesEjemplo = [
-  { id: 1, nombre: "Juan Pérez" },
-  { id: 2, nombre: "María García" },
-  { id: 3, nombre: "Carlos López" },
-  { id: 4, nombre: "Ana Martínez" },
-];
+// Definir tipo para clientes
+interface Cliente {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  contactPerson?: string;
+  notes?: string;
+}
 
 function NuevoPedidoContent() {
   const router = useRouter();
@@ -52,16 +52,16 @@ function NuevoPedidoContent() {
   const [success, setSuccess] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [searchProducto, setSearchProducto] = useState("");
-  const [filteredProductos, setFilteredProductos] = useState(productosEjemplo);
-  const [showProductList, setShowProductList] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
+  const [products, setProducts] = useState<Producto[]>([]);
+  const [activeRow, setActiveRow] = useState<number | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [clients, setClients] = useState<Cliente[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
 
   // Estado del formulario
   const [formData, setFormData] = useState({
     clienteId: "",
     clienteNombre: "",
-    fecha: new Date().toISOString().split('T')[0],
-    estado: "pendiente",
     notas: "",
     items: [
       {
@@ -70,50 +70,119 @@ function NuevoPedidoContent() {
         descripcion: "",
         cantidad: 1,
         precio: 0,
-        total: 0
+        total: 0,
+        productId: "" // Agregar productId para enviar al backend
       }
     ]
   });
+
+  // Función para cargar clientes desde el backend
+  const fetchClients = async () => {
+    try {
+      setClientsLoading(true);
+      const rawClients = await apiFetch<any>('/api/clients');
+      
+      // Debug: verificar estructura de respuesta
+      console.log("API /api/clients response:", rawClients);
+      
+      // Extraer array de clientes de diferentes estructuras de respuesta
+      let clientsArray: any[] = [];
+      
+      if (Array.isArray(rawClients)) {
+        clientsArray = rawClients;
+      } else if (Array.isArray(rawClients?.clients)) {
+        clientsArray = rawClients.clients;
+      } else if (Array.isArray(rawClients?.data)) {
+        clientsArray = rawClients.data;
+      } else if (Array.isArray(rawClients?.data?.clients)) {
+        clientsArray = rawClients.data.clients;
+      } else {
+        console.warn("Unexpected clients response structure:", rawClients);
+      }
+      
+      console.log("Clients loaded:", clientsArray);
+      
+      // Mapear clientes según esquema Prisma
+      const clientsData = clientsArray.map((c: any) => ({
+        id: c.id,
+        name: c.businessName || c.name || "Cliente",
+        email: c.email || "",
+        phone: c.phone || "",
+        city: c.city || "",
+        country: c.country || ""
+      }));
+      
+      setClients(clientsData);
+    } catch (error: any) {
+      console.error("Error cargando clientes:", error);
+      setError("Error al cargar la lista de clientes");
+    } finally {
+      setClientsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const user = getUserInfo();
     setUserInfo(user);
     
-    // Cerrar lista de productos al hacer clic fuera
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowProductList(false);
-      }
-    };
-    
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    // Cargar clientes al inicio
+    fetchClients();
   }, []);
 
-  useEffect(() => {
-    // Filtrar productos según búsqueda
-    if (searchProducto.trim() === "") {
-      setFilteredProductos(productosEjemplo);
-    } else {
-      const searchTerm = searchProducto.toLowerCase();
-      setFilteredProductos(
-        productosEjemplo.filter(
-          producto =>
-            producto.sku.toLowerCase().includes(searchTerm) ||
-            producto.descripcion.toLowerCase().includes(searchTerm)
-        )
-      );
+  // Función para buscar productos en el backend
+  const searchProducts = async (query: string) => {
+    if (query.trim() === "") {
+      setProducts([]);
+      return;
     }
+
+    try {
+      setSearchLoading(true);
+      const rawProducts = await apiFetch<any>(`/api/products/search?q=${encodeURIComponent(query)}`);
+      
+      // Normalizar productos según esquema Prisma
+      const productsData = (
+        Array.isArray(rawProducts) ? rawProducts :
+        rawProducts.products ? rawProducts.products :
+        rawProducts.data ? rawProducts.data : []
+      ).map((p: any) => ({
+        id: p.id || 0,
+        sku: p.sku || "",
+        description: p.description || "",
+        price: Number(p.listPrice || 0),
+        currency: p.currency || "MXN"
+      }));
+      
+      setProducts(productsData);
+    } catch (error: any) {
+      console.error("Error buscando productos:", error);
+      setProducts([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Buscar productos cuando cambia el término de búsqueda
+    const timer = setTimeout(() => {
+      if (searchProducto.trim() !== "") {
+        searchProducts(searchProducto);
+      } else {
+        setProducts([]);
+      }
+    }, 300); // Debounce de 300ms
+
+    return () => clearTimeout(timer);
   }, [searchProducto]);
 
   const handleClienteChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const clienteId = e.target.value;
-    const cliente = clientesEjemplo.find(c => c.id.toString() === clienteId);
+    const cliente = clients.find(c => c.id.toString() === clienteId);
     
     setFormData({
       ...formData,
       clienteId,
-      clienteNombre: cliente ? cliente.nombre : ""
+      clienteNombre: cliente ? cliente.name : ""
     });
   };
 
@@ -122,12 +191,13 @@ function NuevoPedidoContent() {
     
     if (field === "sku") {
       newItems[index].sku = value;
-      // Buscar producto por SKU
-      const producto = productosEjemplo.find(p => p.sku === value);
+      // Buscar producto por SKU en los resultados filtrados
+      const producto = products.find(p => p.sku === value);
       if (producto) {
-        newItems[index].descripcion = producto.descripcion;
-        newItems[index].precio = producto.precio;
-        newItems[index].total = newItems[index].cantidad * producto.precio;
+        newItems[index].descripcion = producto.description;
+        newItems[index].precio = producto.price;
+        newItems[index].total = newItems[index].cantidad * producto.price;
+        newItems[index].productId = producto.id.toString(); // Guardar productId
       }
     } else if (field === "cantidad") {
       const cantidad = parseInt(value) || 0;
@@ -141,18 +211,19 @@ function NuevoPedidoContent() {
     });
   };
 
-  const selectProducto = (index: number, producto: typeof productosEjemplo[0]) => {
+  const selectProducto = (index: number, producto: Producto) => {
     const newItems = [...formData.items];
     newItems[index].sku = producto.sku;
-    newItems[index].descripcion = producto.descripcion;
-    newItems[index].precio = producto.precio;
-    newItems[index].total = newItems[index].cantidad * producto.precio;
+    newItems[index].descripcion = producto.description;
+    newItems[index].precio = producto.price;
+    newItems[index].total = newItems[index].cantidad * producto.price;
+    newItems[index].productId = producto.id.toString(); // Guardar productId
     
     setFormData({
       ...formData,
       items: newItems
     });
-    setShowProductList(false);
+    setActiveRow(null);
     setSearchProducto("");
   };
 
@@ -167,7 +238,8 @@ function NuevoPedidoContent() {
           descripcion: "",
           cantidad: 1,
           precio: 0,
-          total: 0
+          total: 0,
+          productId: ""
         }
       ]
     });
@@ -192,36 +264,47 @@ function NuevoPedidoContent() {
     setShowConfirmModal(true);
   };
 
-  const confirmSubmit = async () => {
+  const createOrder = async () => {
+    // Validaciones antes de enviar
+    if (!formData.clienteId) {
+      setError("Debes seleccionar un cliente");
+      return;
+    }
+
+    // Filtrar items válidos (con productId y cantidad > 0)
+    const validItems = formData.items.filter(item => item.productId && item.cantidad > 0);
+    
+    if (validItems.length === 0) {
+      setError("Debes agregar al menos un producto");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(null);
     setShowConfirmModal(false);
 
-    // Validaciones básicas
-    if (!formData.clienteId) {
-      setError("Por favor selecciona un cliente");
-      setLoading(false);
-      return;
-    }
-
-    if (formData.items.some(item => !item.sku || item.cantidad <= 0)) {
-      setError("Por favor completa todos los items del pedido");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // En una implementación real, aquí enviaríamos los datos a la API
-      console.log("Datos del pedido:", {
-        ...formData,
-        total: calcularTotal()
+      // Construir payload según especificaciones del backend
+      const payload = {
+        clientId: formData.clienteId, // Mantener como string (UUID)
+        notes: formData.notas || "",
+        items: validItems.map(item => ({
+          productId: item.productId, // Usar productId en lugar de productSku
+          quantity: Number(item.cantidad)
+        }))
+      };
+
+      // DEBUG: Verificar estructura del payload
+      console.log("ORDER PAYLOAD:", payload);
+
+      // Enviar pedido al backend usando apiFetch
+      const result = await apiFetch('/api/orders', {
+        method: 'POST',
+        body: JSON.stringify(payload)
       });
-
-      // Simular llamada a API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      setSuccess("Pedido enviado exitosamente");
+      
+      setSuccess("Pedido creado exitosamente");
       
       // Redirigir después de 2 segundos
       setTimeout(() => {
@@ -229,10 +312,15 @@ function NuevoPedidoContent() {
       }, 2000);
 
     } catch (err: any) {
-      setError(err.message || "Error al enviar el pedido");
+      console.error("Error creando pedido:", err);
+      setError(err.message || "Error creando pedido. Verifica la consola para más detalles.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const confirmSubmit = async () => {
+    await createOrder();
   };
 
   const productosCorrectos = formData.items.every(item => item.sku && item.descripcion);
@@ -303,7 +391,7 @@ function NuevoPedidoContent() {
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Información del Pedido</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
               {/* Cliente */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -317,13 +405,18 @@ function NuevoPedidoContent() {
                   onChange={handleClienteChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   required
+                  disabled={clientsLoading}
                 >
                   <option value="">Selecciona un cliente</option>
-                  {clientesEjemplo.map(cliente => (
-                    <option key={cliente.id} value={cliente.id}>
-                      {cliente.nombre}
-                    </option>
-                  ))}
+                  {clientsLoading ? (
+                    <option value="" disabled>Cargando clientes...</option>
+                  ) : (
+                    clients.map(client => (
+                      <option key={client.id} value={client.id}>
+                        {client.name}
+                      </option>
+                    ))
+                  )}
                 </select>
                 {formData.clienteNombre && (
                   <p className="mt-2 text-sm text-gray-600">
@@ -332,42 +425,8 @@ function NuevoPedidoContent() {
                 )}
               </div>
 
-              {/* Fecha */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={16} />
-                    Fecha del Pedido
-                  </div>
-                </label>
-                <input
-                  type="date"
-                  value={formData.fecha}
-                  onChange={(e) => setFormData({...formData, fecha: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  required
-                />
-              </div>
-
-              {/* Estado */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Estado del Pedido
-                </label>
-                <select
-                  value={formData.estado}
-                  onChange={(e) => setFormData({...formData, estado: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                >
-                  <option value="pendiente">Pendiente</option>
-                  <option value="en_proceso">En Proceso</option>
-                  <option value="completado">Completado</option>
-                  <option value="cancelado">Cancelado</option>
-                </select>
-              </div>
-
               {/* Notas */}
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <div className="flex items-center gap-2">
                     <FileText size={16} />
@@ -417,7 +476,7 @@ function NuevoPedidoContent() {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* SKU con autocomplete */}
-                    <div className="relative" ref={searchRef}>
+                    <div className="relative">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         <div className="flex items-center gap-2">
                           <Hash size={14} />
@@ -431,9 +490,10 @@ function NuevoPedidoContent() {
                           onChange={(e) => {
                             handleItemChange(index, "sku", e.target.value);
                             setSearchProducto(e.target.value);
-                            setShowProductList(true);
+                            setActiveRow(index);
                           }}
-                          onFocus={() => setShowProductList(true)}
+                          onFocus={() => setActiveRow(index)}
+                          onBlur={() => setTimeout(() => setActiveRow(null), 200)}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                           placeholder="Buscar SKU..."
                           required
@@ -442,9 +502,9 @@ function NuevoPedidoContent() {
                       </div>
                       
                       {/* Lista de productos */}
-                      {showProductList && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                          {filteredProductos.map((producto) => (
+                      {activeRow === index && products.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {products.map((producto) => (
                             <button
                               key={producto.sku}
                               type="button"
@@ -452,8 +512,8 @@ function NuevoPedidoContent() {
                               className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                             >
                               <div className="font-medium text-gray-900">{producto.sku}</div>
-                              <div className="text-sm text-gray-600">{producto.descripcion}</div>
-                              <div className="text-sm text-gray-500">Precio: ${producto.precio.toFixed(2)}</div>
+                              <div className="text-sm text-gray-600">{producto.description}</div>
+                              <div className="text-sm text-gray-500">Precio: ${Number(producto.price || 0).toFixed(2)}</div>
                             </button>
                           ))}
                         </div>
@@ -493,11 +553,11 @@ function NuevoPedidoContent() {
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-sm text-gray-600">Precio unitario: ${item.precio.toFixed(2)}</p>
-                        <p className="text-sm text-gray-600">Total línea: ${item.total.toFixed(2)}</p>
+                        <p className="text-sm text-gray-600">Precio unitario: ${Number(item.precio || 0).toFixed(2)}</p>
+                        <p className="text-sm text-gray-600">Total línea: ${Number(item.total || 0).toFixed(2)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">${item.total.toFixed(2)}</p>
+                        <p className="text-lg font-bold text-gray-900">${Number(item.total || 0).toFixed(2)}</p>
                       </div>
                     </div>
                   </div>
