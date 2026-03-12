@@ -77,7 +77,9 @@ function NuevoPedidoContent() {
         montoIVA: 0,
         precioFinal: 0,
         total: 0,
-        productId: "" // Agregar productId para enviar al backend
+        productId: "", // Agregar productId para enviar al backend
+        porcentajeIVA: 0,
+        porcentajeIEPS: 0
       }
     ]
   });
@@ -211,6 +213,8 @@ function NuevoPedidoContent() {
         newItems[index].precioFinal = calculo.precioFinal;
         newItems[index].total = calculo.precioFinal; // Usar precio final con impuestos
         newItems[index].productId = producto.id.toString(); // Guardar productId
+        newItems[index].porcentajeIVA = producto.porcentajeIVA || 0;
+        newItems[index].porcentajeIEPS = producto.porcentajeIEPS || 0;
       }
     } else if (field === "cantidad") {
       const cantidad = parseInt(value) || 0;
@@ -247,6 +251,8 @@ function NuevoPedidoContent() {
     newItems[index].precioFinal = calculo.precioFinal;
     newItems[index].total = calculo.precioFinal; // Usar precio final con impuestos
     newItems[index].productId = producto.id.toString(); // Guardar productId
+    newItems[index].porcentajeIVA = producto.porcentajeIVA || 0;
+    newItems[index].porcentajeIEPS = producto.porcentajeIEPS || 0;
     
     setFormData({
       ...formData,
@@ -272,7 +278,9 @@ function NuevoPedidoContent() {
           montoIVA: 0,
           precioFinal: 0,
           total: 0,
-          productId: ""
+          productId: "",
+          porcentajeIVA: 0,
+          porcentajeIEPS: 0
         }
       ]
     });
@@ -620,22 +628,20 @@ function NuevoPedidoContent() {
                             Cálculo de impuestos
                           </h4>
                           {(() => {
-                            const producto = products.find(p => p.sku === item.sku);
-                            const calculo = calcularImpuestos(producto, item.cantidad);
-                            const ivaPorcentaje = producto?.porcentajeIVA || 0;
-                            const iepsPorcentaje = producto?.porcentajeIEPS || 0;
-                            const subtotal = calculo.base + calculo.montoIEPS;
+                            const ivaPorcentaje = item.porcentajeIVA || 0;
+                            const iepsPorcentaje = item.porcentajeIEPS || 0;
+                            const subtotal = item.precioBase + item.montoIEPS;
                             
                             return (
                               <div className="grid grid-cols-2 gap-2 text-sm">
                                 <span className="text-gray-700">Precio base:</span>
-                                <span className="text-right font-medium">${calculo.base.toFixed(2)}</span>
+                                <span className="text-right font-medium">${item.precioBase.toFixed(2)}</span>
 
                                 {iepsPorcentaje > 0 && (
                                   <>
                                     <span className="text-gray-700">IEPS ({iepsPorcentaje}%):</span>
                                     <span className="text-right text-orange-600 font-medium">
-                                      ${calculo.montoIEPS.toFixed(2)}
+                                      ${item.montoIEPS.toFixed(2)}
                                     </span>
                                   </>
                                 )}
@@ -649,14 +655,14 @@ function NuevoPedidoContent() {
                                   <>
                                     <span className="text-gray-700">IVA ({ivaPorcentaje}%):</span>
                                     <span className="text-right text-blue-600 font-medium">
-                                      ${calculo.montoIVA.toFixed(2)}
+                                      ${item.montoIVA.toFixed(2)}
                                     </span>
                                   </>
                                 )}
 
                                 <span className="font-bold text-gray-900">Precio final:</span>
                                 <span className="text-right font-bold text-green-600 border-t border-gray-300 pt-1">
-                                  ${calculo.precioFinal.toFixed(2)}
+                                  ${item.precioFinal.toFixed(2)}
                                 </span>
                               </div>
                             );
