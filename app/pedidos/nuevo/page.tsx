@@ -31,6 +31,8 @@ interface Producto {
   sku: string;
   description: string;
   price: number;
+  porcentajeIVA?: number;
+  porcentajeIEPS?: number;
 }
 
 // Definir tipo para clientes
@@ -150,6 +152,8 @@ function NuevoPedidoContent() {
         sku: p.sku || "",
         description: p.description || "",
         price: Number(p.listPrice || 0),
+        porcentajeIVA: Number(p.porcentajeIVA || 0),
+        porcentajeIEPS: Number(p.porcentajeIEPS || 0),
         currency: p.currency || "MXN"
       }));
       
@@ -257,6 +261,34 @@ function NuevoPedidoContent() {
 
   const calcularTotal = () => {
     return formData.items.reduce((sum, item) => sum + item.total, 0);
+  };
+
+  // Función para calcular impuestos (IVA + IEPS)
+  const calcularImpuestos = (producto: Producto | undefined, cantidad: number = 1) => {
+    if (!producto) {
+      return {
+        base: 0,
+        montoIEPS: 0,
+        montoIVA: 0,
+        precioFinal: 0
+      };
+    }
+
+    const base = producto.price;
+    const iva = (producto.porcentajeIVA || 0) / 100;
+    const ieps = (producto.porcentajeIEPS || 0) / 100;
+
+    const montoIEPS = base * ieps;
+    const subtotal = base + montoIEPS;
+    const montoIVA = subtotal * iva;
+    const precioFinal = subtotal + montoIVA;
+
+    return {
+      base: base * cantidad,
+      montoIEPS: montoIEPS * cantidad,
+      montoIVA: montoIVA * cantidad,
+      precioFinal: precioFinal * cantidad
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -551,13 +583,53 @@ function NuevoPedidoContent() {
 
                   {/* Total de la línea */}
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm text-gray-600">Precio unitario: ${Number(item.precio || 0).toFixed(2)}</p>
-                        <p className="text-sm text-gray-600">Total línea: ${Number(item.total || 0).toFixed(2)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">${Number(item.total || 0).toFixed(2)}</p>
+                    <div className="space-y-3">
+                      {/* Cálculo de impuestos */}
+                      {item.sku && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                          <h4 className="font-medium text-blue-900 mb-2">Cálculo de impuestos:</h4>
+                          {(() => {
+                            const producto = products.find(p => p.sku === item.sku);
+                            const calculo = calcularImpuestos(producto, item.cantidad);
+                            const ivaPorcentaje = producto?.porcentajeIVA || 0;
+                            const iepsPorcentaje = producto?.porcentajeIEPS || 0;
+                            
+                            return (
+                              <div className="space-y-1 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-700">Precio base:</span>
+                                  <span className="font-medium">${calculo.base.toFixed(2)}</span>
+                                </div>
+                                {iepsPorcentaje > 0 && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-700">IEPS ({iepsPorcentaje}%):</span>
+                                    <span className="font-medium text-orange-600">${calculo.montoIEPS.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                {ivaPorcentaje > 0 && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-700">IVA ({ivaPorcentaje}%):</span>
+                                    <span className="font-medium text-green-600">${calculo.montoIVA.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between pt-1 border-t border-blue-200">
+                                  <span className="font-medium text-gray-900">Precio final:</span>
+                                  <span className="font-bold text-blue-900">${calculo.precioFinal.toFixed(2)}</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-sm text-gray-600">Precio unitario: ${Number(item.precio || 0).toFixed(2)}</p>
+                          <p className="text-sm text-gray-600">Total línea: ${Number(item.total || 0).toFixed(2)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-gray-900">${Number(item.total || 0).toFixed(2)}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
