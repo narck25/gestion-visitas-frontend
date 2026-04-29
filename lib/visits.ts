@@ -3,8 +3,8 @@ import { apiFetch, apiUpload, ApiError } from './api';
 
 // Tipos de datos
 export interface Visit {
-  id: number;
-  clientId: number;
+  id: string;
+  clientId: string;
   clientName: string;
   latitude: number;
   longitude: number;
@@ -13,19 +13,42 @@ export interface Visit {
   status: 'pending' | 'completed' | 'cancelled';
   createdAt: string;
   updatedAt: string;
+  beforePhotos?: string[];
+  afterPhotos?: string[];
+  client?: {
+    id: string;
+    name: string;
+  };
+  promoter?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface CreateVisitRequest {
-  clientId: number;
-  latitude: number;
-  longitude: number;
-  accuracy: number;
+  clientId: string;
   notes: string;
+  date?: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  beforePhotos: string[];
+  afterPhotos: string[];
+  signature?: string;
+}
+
+export interface CreateVisitMultipartRequest {
+  clientId: string;
+  notes: string;
+  latitude?: number;
+  longitude?: number;
+  beforePhotos: File[];
+  afterPhotos: File[];
 }
 
 export interface CreateVisitResponse {
-  id: number;
-  clientId: number;
+  id: string;
+  clientId: string;
   clientName: string;
   latitude: number;
   longitude: number;
@@ -35,26 +58,19 @@ export interface CreateVisitResponse {
   message: string;
 }
 
-export interface UploadImageRequest {
-  visitId: number;
-  type: 'BEFORE' | 'AFTER';
-  images: File[];
-}
-
-export interface UploadImageResponse {
-  id: number;
-  visitId: number;
-  type: string;
-  imageUrl: string;
-  message: string;
-}
-
 // Función para crear una nueva visita
 export async function createVisit(data: CreateVisitRequest): Promise<CreateVisitResponse> {
   try {
+    // Asegurar que beforePhotos y afterPhotos sean arrays
+    const payload = {
+      ...data,
+      beforePhotos: data.beforePhotos || [],
+      afterPhotos: data.afterPhotos || [],
+    };
+    
     const response = await apiFetch<CreateVisitResponse>('/api/visits', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
     
     return response;
@@ -75,90 +91,139 @@ export async function createVisit(data: CreateVisitRequest): Promise<CreateVisit
   }
 }
 
-// Función para subir imágenes de una visita
-export async function uploadVisitImages(data: UploadImageRequest): Promise<UploadImageResponse[]> {
+// Función para crear una nueva visita usando multipart/form-data
+export async function createVisitMultipart(formData: FormData): Promise<any> {
+  const token = localStorage.getItem("auth_token");
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/visits`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formData
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Error creando visita");
+  }
+
+  return response.json();
+}
+
+// Función helper para obtener URL completa de foto
+export function getPhotoUrl(path: string): string {
+  if (!path) {
+    console.warn('[DEBUG] getPhotoUrl: Path vacío o nulo');
+    return '';
+  }
+  
+  // Si ya es una URL completa, retornar tal cual
+  if (path.startsWith('http')) {
+    console.log(`[DEBUG] getPhotoUrl: URL completa detectada: ${path}`);
+    return path;
+  }
+  
+  // Si es base64, retornar tal cual
+  if (path.startsWith('data:image')) {
+    console.log('[DEBUG] getPhotoUrl: Base64 detectado');
+    return path;
+  }
+  
+  // Si es una ruta relativa, construir URL completa
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  console.log(`[DEBUG] getPhotoUrl: API_BASE_URL: ${API_BASE_URL}`);
+  console.log(`[DEBUG] getPhotoUrl: Path original: ${path}`);
+  
+  // Asegurar que la ruta tenga slash inicial si no lo tiene
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const fullUrl = `${API_BASE_URL}${normalizedPath}`;
+  
+  console.log(`[DEBUG] getPhotoUrl: URL generada: ${fullUrl}`);
+  return fullUrl;
+}
+
+// Función helper para obtener múltiples URLs de fotos
+export function getPhotoUrls(paths: string[]): string[] {
+  if (!paths || !Array.isArray(paths)) {
+    console.warn('[DEBUG] getPhotoUrls: Paths inválido o no es array:', paths);
+    return [];
+  }
+  
+  return paths.map(path => getPhotoUrl(path));
+}
+
+// Función helper para verificar si una URL de imagen es válida
+export async function checkImageUrl(url: string): Promise<boolean> {
+  if (!url) return false;
+  
   try {
-    const formData = new FormData();
-    formData.append('visitId', data.visitId.toString());
-    formData.append('type', data.type);
-    
-    // Agregar cada imagen al FormData
-    data.images.forEach((image, index) => {
-      formData.append('images', image);
-    });
-    
-    const response = await apiUpload<UploadImageResponse[]>('/api/visits/images', formData);
-    return response;
+    const response = await fetch(url, { method: 'HEAD' });
+    const contentType = response.headers.get('content-type');
+    return response.ok && (contentType?.startsWith('image/') || false);
   } catch (error) {
-    const apiError = error as ApiError;
-    console.error('Error al subir imágenes:', apiError.message);
-    throw apiError;
+    console.warn(`[DEBUG] checkImageUrl: Error verificando URL ${url}:`, error);
+    return false;
   }
 }
 
-// Función para subir ambas imágenes (antes y después)
-export async function uploadBothVisitImages(
-  visitId: number,
-  beforeImage: File | null,
-  afterImage: File | null
-): Promise<{ before?: UploadImageResponse; after?: UploadImageResponse }> {
-  const results: { before?: UploadImageResponse; after?: UploadImageResponse } = {};
+// Función helper para calcular duración de visita
+export function getVisitDuration(start: string, end: string): string {
+  if (!start || !end) return 'Duración no disponible';
   
   try {
-    // Subir imagen ANTES si existe
-    if (beforeImage) {
-      const beforeResponse = await uploadVisitImages({
-        visitId,
-        type: 'BEFORE',
-        images: [beforeImage],
-      });
-      results.before = beforeResponse[0];
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return 'Datos de fecha inválidos';
     }
     
-    // Subir imagen DESPUÉS si existe
-    if (afterImage) {
-      const afterResponse = await uploadVisitImages({
-        visitId,
-        type: 'AFTER',
-        images: [afterImage],
-      });
-      results.after = afterResponse[0];
+    const diffInMs = endDate.getTime() - startDate.getTime();
+    
+    // Si la diferencia es negativa (caso raro)
+    if (diffInMs < 0) {
+      return 'Datos inconsistentes';
     }
     
-    return results;
+    const diffInMinutes = diffInMs / (1000 * 60);
+    
+    if (diffInMinutes < 1) {
+      return 'Menos de 1 minuto';
+    }
+    
+    if (diffInMinutes < 60) {
+      return `${Math.round(diffInMinutes)} minutos`;
+    }
+    
+    const hours = Math.floor(diffInMinutes / 60);
+    const minutes = Math.round(diffInMinutes % 60);
+    
+    if (minutes === 0) {
+      return `${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+    }
+    
+    return `${hours} ${hours === 1 ? 'hora' : 'horas'} ${minutes} minutos`;
   } catch (error) {
-    console.error('Error al subir imágenes de visita:', error);
-    throw error;
+    console.error('Error calculando duración:', error);
+    return 'Error calculando duración';
   }
 }
 
 // Función para validar datos de visita
 export function validateVisitData(data: {
-  clientId?: number;
-  latitude?: number;
-  longitude?: number;
-  accuracy?: number;
+  clientId?: string;
   notes?: string;
+  beforePhotos?: string[];
+  afterPhotos?: string[];
 }): { isValid: boolean; message: string } {
   
-  if (!data.clientId || data.clientId <= 0) {
+  if (!data.clientId || data.clientId.trim() === '') {
     return {
       isValid: false,
       message: 'Se requiere un cliente válido',
-    };
-  }
-  
-  if (data.latitude === undefined || data.longitude === undefined) {
-    return {
-      isValid: false,
-      message: 'Se requiere ubicación GPS',
-    };
-  }
-  
-  if (data.accuracy === undefined || data.accuracy <= 0) {
-    return {
-      isValid: false,
-      message: 'La precisión GPS no es válida',
     };
   }
   
@@ -166,6 +231,21 @@ export function validateVisitData(data: {
     return {
       isValid: false,
       message: 'Las notas no pueden exceder 1000 caracteres',
+    };
+  }
+  
+  // Asegurar que beforePhotos y afterPhotos sean arrays
+  if (data.beforePhotos && !Array.isArray(data.beforePhotos)) {
+    return {
+      isValid: false,
+      message: 'Las fotos ANTES deben ser un array',
+    };
+  }
+  
+  if (data.afterPhotos && !Array.isArray(data.afterPhotos)) {
+    return {
+      isValid: false,
+      message: 'Las fotos DESPUÉS deben ser un array',
     };
   }
   
@@ -178,8 +258,23 @@ export function validateVisitData(data: {
 // Función para obtener todas las visitas
 export async function getVisits(): Promise<Visit[]> {
   try {
-    const visits = await apiFetch<Visit[]>('/api/visits');
-    return visits;
+    const response = await apiFetch<any>('/api/visits');
+    
+    // La API devuelve { success: boolean, data: { visits: [], pagination: {} } }
+    // Extraer el array de visitas de la respuesta
+    if (response && response.success && response.data && response.data.visits) {
+      return response.data.visits;
+    } else if (Array.isArray(response)) {
+      // Si la respuesta es directamente un array (para compatibilidad)
+      return response;
+    } else if (response && response.visits) {
+      // Si la respuesta tiene visits en el nivel superior
+      return response.visits;
+    }
+    
+    // Si no se pudo extraer visitas, devolver array vacío
+    console.warn('Formato de respuesta inesperado:', response);
+    return [];
   } catch (error) {
     const apiError = error as ApiError;
     console.error('Error al obtener visitas:', apiError.message);
@@ -188,13 +283,49 @@ export async function getVisits(): Promise<Visit[]> {
 }
 
 // Función para obtener una visita por ID
-export async function getVisitById(id: number): Promise<Visit> {
+export async function getVisitById(id: string): Promise<Visit> {
   try {
-    const visit = await apiFetch<Visit>(`/api/visits/${id}`);
+    console.log(`[DEBUG] getVisitById: Obteniendo visita con ID: ${id}`);
+    const response = await apiFetch<any>(`/api/visits/${id}`);
+    console.log('[DEBUG] getVisitById: Respuesta completa de la API:', response);
+    
+    // Extraer el objeto visit de la respuesta
+    // Según los logs, la API devuelve: { "success": true, "data": { "visit": { ... } } }
+    // También puede devolver otros formatos para compatibilidad
+    
+    let visit: any = null;
+    
+    // Formato 1: { success: true, data: { visit: { ... } } }
+    if (response?.data?.visit) {
+      visit = response.data.visit;
+      console.log('[DEBUG] getVisitById: Extraído de response.data.visit');
+    }
+    // Formato 2: { visit: { ... } }
+    else if (response?.visit) {
+      visit = response.visit;
+      console.log('[DEBUG] getVisitById: Extraído de response.visit');
+    }
+    // Formato 3: { success: true, data: { ... } } (data es directamente el visit)
+    else if (response?.success && response?.data) {
+      visit = response.data;
+      console.log('[DEBUG] getVisitById: Extraído de response.data');
+    }
+    // Formato 4: Directamente el objeto visit
+    else if (response?.id) {
+      visit = response;
+      console.log('[DEBUG] getVisitById: Respuesta es directamente el objeto visit');
+    }
+    
+    if (!visit) {
+      console.error('[DEBUG] getVisitById: No se pudo extraer la visita de la respuesta:', response);
+      throw new Error(`No se pudo extraer la visita de la respuesta: ${JSON.stringify(response)}`);
+    }
+    
+    console.log('[DEBUG] getVisitById: Objeto visit extraído:', visit);
     return visit;
   } catch (error) {
     const apiError = error as ApiError;
-    console.error(`Error al obtener visita ${id}:`, apiError.message);
+    console.error(`[DEBUG] Error al obtener visita ${id}:`, apiError.message);
     throw apiError;
   }
 }

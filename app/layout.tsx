@@ -13,27 +13,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Visitas Promotores PWA",
-  description: "Aplicación PWA para la gestión de visitas de promotores de venta.",
+  title: "KRAM Force",
+  description: "Gestión Comercial de Fuerza de Ventas.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Visitas PWA",
+    title: "KRAM Force",
   },
   formatDetection: {
     telephone: false,
   },
   openGraph: {
     type: "website",
-    siteName: "Visitas Promotores PWA",
-    title: "Visitas Promotores PWA",
-    description: "Aplicación PWA para la gestión de visitas de promotores de venta.",
+    siteName: "KRAM Force",
+    title: "KRAM Force",
+    description: "Gestión Comercial de Fuerza de Ventas.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Visitas Promotores PWA",
-    description: "Aplicación PWA para la gestión de visitas de promotores de venta.",
+    title: "KRAM Force",
+    description: "Gestión Comercial de Fuerza de Ventas.",
   },
 };
 
@@ -52,10 +52,11 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head>
+        <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Visitas PWA" />
+        <meta name="apple-mobile-web-app-title" content="KRAM Force" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-config" content="/icons/browserconfig.xml" />

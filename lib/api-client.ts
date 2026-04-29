@@ -107,85 +107,85 @@ export class ApiClient {
 
   // Clientes
   async getClientes() {
-    return this.get('/clientes');
+    return this.get('/api/clients');
   }
 
   async getCliente(id: number) {
-    return this.get(`/clientes/${id}`);
+    return this.get(`/api/clients/${id}`);
   }
 
   async createCliente(data: any) {
-    return this.post('/clientes', data);
+    return this.post('/api/clients', data);
   }
 
   async updateCliente(id: number, data: any) {
-    return this.put(`/clientes/${id}`, data);
+    return this.put(`/api/clients/${id}`, data);
   }
 
   async deleteCliente(id: number) {
-    return this.delete(`/clientes/${id}`);
+    return this.delete(`/api/clients/${id}`);
   }
 
   // Visitas
   async getVisitas() {
-    return this.get('/visitas');
+    return this.get('/api/visits');
   }
 
   async getVisita(id: number) {
-    return this.get(`/visitas/${id}`);
+    return this.get(`/api/visits/${id}`);
   }
 
   async getMisVisitas() {
-    return this.get('/mis-visitas');
+    return this.get('/api/mis-visitas');
   }
 
   async createVisita(data: any) {
-    return this.post('/visitas', data);
+    return this.post('/api/visits', data);
   }
 
   async updateVisita(id: number, data: any) {
-    return this.put(`/visitas/${id}`, data);
+    return this.put(`/api/visits/${id}`, data);
   }
 
   async deleteVisita(id: number) {
-    return this.delete(`/visitas/${id}`);
+    return this.delete(`/api/visits/${id}`);
   }
 
   // Usuarios
   async getUsuarios() {
-    return this.get('/usuarios');
+    return this.get('/api/users');
   }
 
   async getUsuario(id: number) {
-    return this.get(`/usuarios/${id}`);
+    return this.get(`/api/users/${id}`);
   }
 
   async getMiPerfil() {
-    return this.get('/mi-perfil');
+    return this.get('/api/auth/profile');
   }
 
   async updateMiPerfil(data: any) {
-    return this.put('/mi-perfil', data);
+    return this.put('/api/auth/profile', data);
   }
 
   // Promotores (para supervisores)
   async getPromotores() {
-    return this.get('/promotores');
+    return this.get('/api/users/promoters');
   }
 
   async getPromotor(id: number) {
-    return this.get(`/promotores/${id}`);
+    return this.get(`/api/users/promoters/${id}`);
   }
 
   // Reportes
   async getReportes(params?: Record<string, any>) {
     const queryString = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return this.get(`/reportes${queryString}`);
+    return this.get(`/api/reportes${queryString}`);
   }
 
   async exportReporte(params: Record<string, any>) {
     const queryString = `?${new URLSearchParams(params).toString()}`;
-    return this.get(`/reportes/export${queryString}`);
+    return this.get(`/api/reportes/export${queryString}`);
   }
 }
 

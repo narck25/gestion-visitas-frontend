@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verificar localStorage</title>
+</head>
+<body>
+    <h1>Verificar localStorage</h1>
+    <div id="output"></div>
+    
+    <script>
+        function checkLocalStorage() {
+            const output = document.getElementById('output');
+            const tokens = {
+                'auth_token': localStorage.getItem('auth_token'),
+                'accessToken': localStorage.getItem('accessToken'),
+                'token': localStorage.getItem('token'),
+                'refreshToken': localStorage.getItem('refreshToken'),
+                'user': localStorage.getItem('user')
+            };
+            
+            let html = '<h2>Tokens en localStorage:</h2>';
+            html += '<ul>';
+            
+            for (const [key, value] of Object.entries(tokens)) {
+                if (value) {
+                    html += `<li><strong>${key}:</strong> ${value.substring(0, 50)}... (longitud: ${value.length})</li>`;
+                } else {
+                    html += `<li><strong>${key}:</strong> NO HAY VALOR</li>`;
+                }
+            }
+            
+            html += '</ul>';
+            
+            // Verificar si hay algún token
+            const hasAnyToken = tokens.auth_token || tokens.accessToken || tokens.token;
+            if (hasAnyToken) {
+                html += '<p style="color: green;">✓ Hay al menos un token en localStorage</p>';
+            } else {
+                html += '<p style="color: red;">✗ No hay tokens en localStorage</p>';
+            }
+            
+            output.innerHTML = html;
+        }
+        
+        // Ejecutar al cargar la página
+        checkLocalStorage();
+    </script>
+</body>
+</html>

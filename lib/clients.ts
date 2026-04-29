@@ -69,25 +69,29 @@ export interface DeleteClientResponse {
   message: string;
 }
 
-// Función para obtener todos los clientes
-export async function getClients(): Promise<Client[]> {
+// Función para obtener todos los clientes con paginación
+export async function getClients(page = 1, limit = 10): Promise<ClientsListResponse> {
   try {
-    const response = await apiFetch<ApiResponse<ClientsListResponse>>('/api/clients');
+    const response = await apiFetch<ApiResponse<ClientsListResponse>>(
+      `/api/clients?page=${page}&limit=${limit}`
+    );
     
     // Validar que la respuesta sea exitosa
     if (!response.success) {
       console.warn('Respuesta no exitosa en getClients():', response);
-      return [];
+      return {
+        clients: [],
+        pagination: {
+          total: 0,
+          page,
+          limit,
+          totalPages: 0
+        }
+      };
     }
     
-    // Extraer los clientes de response.data.clients
-    if (response.data && Array.isArray(response.data.clients)) {
-      return response.data.clients;
-    }
-    
-    // Si no hay clients en data, devolver array vacío
-    console.warn('Formato de respuesta no reconocido en getClients(), devolviendo array vacío:', response);
-    return [];
+    // Devolver la respuesta completa con paginación
+    return response.data;
   } catch (error) {
     const apiError = error as ApiError;
     console.error('Error al obtener clientes:', apiError.message);
@@ -96,7 +100,7 @@ export async function getClients(): Promise<Client[]> {
 }
 
 // Función para obtener cliente por ID
-export async function getClientById(id: number): Promise<Client> {
+export async function getClientById(id: string | number): Promise<Client> {
   try {
     const response = await apiFetch<ApiResponse<Client>>(`/api/clients/${id}`);
     
@@ -119,10 +123,11 @@ export async function getClientById(id: number): Promise<Client> {
 // Función para buscar cliente por nombre
 export async function findClientByName(name: string): Promise<Client | null> {
   try {
-    const clients = await getClients();
+    // Obtener todos los clientes (sin paginación para búsqueda)
+    const response = await getClients(1, 1000); // Usar un límite grande para obtener todos
     const normalizedSearch = name.toLowerCase().trim();
     
-    const foundClient = clients.find(client => 
+    const foundClient = response.clients.find(client => 
       client.name.toLowerCase().includes(normalizedSearch)
     );
     
@@ -168,7 +173,7 @@ export async function createClient(clientData: CreateClientRequest): Promise<Cre
 }
 
 // Función para actualizar un cliente
-export async function updateClient(id: number, clientData: UpdateClientRequest): Promise<Client> {
+export async function updateClient(id: string | number, clientData: UpdateClientRequest): Promise<Client> {
   try {
     const response = await apiFetch<ApiResponse<Client>>(`/api/clients/${id}`, {
       method: 'PUT',
@@ -201,7 +206,7 @@ export async function updateClient(id: number, clientData: UpdateClientRequest):
 }
 
 // Función para eliminar un cliente
-export async function deleteClient(id: number): Promise<DeleteClientResponse> {
+export async function deleteClient(id: string | number): Promise<DeleteClientResponse> {
   try {
     const response = await apiFetch<ApiResponse<DeleteClientResponse>>(`/api/clients/${id}`, {
       method: 'DELETE',
@@ -289,9 +294,9 @@ export function validateClientData(clientData: CreateClientRequest): { isValid: 
 // Función para obtener clientes por promotor
 export async function getClientsByPromotor(promotorId: number): Promise<Client[]> {
   try {
-    const clients = await getClients();
+    const response = await getClients(1, 1000); // Obtener todos los clientes para filtrar
     // Filtrar clientes por promotorId (en una implementación real, el backend haría esto)
-    return clients.filter(client => client.promotorId === promotorId);
+    return response.clients.filter(client => client.promotorId === promotorId);
   } catch (error) {
     console.error(`Error al obtener clientes del promotor ${promotorId}:`, error);
     return [];

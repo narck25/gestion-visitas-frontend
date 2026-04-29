@@ -24,8 +24,9 @@ import {
 } from "lucide-react";
 import { isAuthenticated, getUserInfo, isAdmin } from "@/lib/auth";
 import { exportVisitasToCSV, exportVisitasToPDF } from "@/lib/export";
+import { getVisits, Visit as ApiVisit, getVisitDuration } from "@/lib/visits";
 
-// Tipos de datos para visitas
+// Tipos de datos para visitas (frontend)
 interface Visita {
   id: number;
   fecha: string;
@@ -41,131 +42,17 @@ interface Visita {
   fotos: number;
 }
 
-// Datos de ejemplo para demostración con coordenadas
-const visitasEjemplo: Visita[] = [
-  {
-    id: 1,
-    fecha: '2024-03-15',
-    hora: '10:30',
-    cliente: 'Tienda ABC',
-    ubicacion: 'Centro Comercial Plaza',
-    lat: 19.4326,
-    lng: -99.1332,
-    promotor: 'Juan Pérez',
-    promotorId: 101,
-    estado: 'completada',
-    notas: 'Visita de seguimiento, cliente satisfecho',
-    fotos: 3
-  },
-  {
-    id: 2,
-    fecha: '2024-03-14',
-    hora: '14:00',
-    cliente: 'Supermercado XYZ',
-    ubicacion: 'Av. Principal 123',
-    lat: 19.4342,
-    lng: -99.1345,
-    promotor: 'María García',
-    promotorId: 102,
-    estado: 'completada',
-    notas: 'Nuevo pedido realizado',
-    fotos: 2
-  },
-  {
-    id: 3,
-    fecha: '2024-03-14',
-    hora: '16:45',
-    cliente: 'Farmacia Salud',
-    ubicacion: 'Calle Secundaria 456',
-    lat: 19.4330,
-    lng: -99.1320,
-    promotor: 'Carlos López',
-    promotorId: 103,
-    estado: 'pendiente',
-    notas: 'Programada para mañana',
-    fotos: 0
-  },
-  {
-    id: 4,
-    fecha: '2024-03-13',
-    hora: '09:15',
-    cliente: 'Restaurante Sabor',
-    ubicacion: 'Zona Gastronómica',
-    lat: 19.4350,
-    lng: -99.1350,
-    promotor: 'Ana Martínez',
-    promotorId: 104,
-    estado: 'completada',
-    notas: 'Revisión de inventario',
-    fotos: 4
-  },
-  {
-    id: 5,
-    fecha: '2024-03-12',
-    hora: '11:30',
-    cliente: 'Tienda Moda',
-    ubicacion: 'Centro Comercial Moderno',
-    lat: 19.4310,
-    lng: -99.1310,
-    promotor: 'Pedro Sánchez',
-    promotorId: 105,
-    estado: 'cancelada',
-    notas: 'Cliente no se presentó',
-    fotos: 0
-  },
-  {
-    id: 6,
-    fecha: '2024-03-11',
-    hora: '13:00',
-    cliente: 'Cafetería Aroma',
-    ubicacion: 'Plaza Central',
-    lat: 19.4360,
-    lng: -99.1360,
-    promotor: 'Laura Rodríguez',
-    promotorId: 106,
-    estado: 'completada',
-    notas: 'Entrega de material promocional',
-    fotos: 2
-  },
-  {
-    id: 7,
-    fecha: '2024-03-10',
-    hora: '15:20',
-    cliente: 'Papelería Escolar',
-    ubicacion: 'Calle Escuela 789',
-    lat: 19.4370,
-    lng: -99.1370,
-    promotor: 'Roberto Fernández',
-    promotorId: 107,
-    estado: 'completada',
-    notas: 'Pedido especial de útiles',
-    fotos: 3
-  },
-  {
-    id: 8,
-    fecha: '2024-03-09',
-    hora: '08:45',
-    cliente: 'Ferretería Construye',
-    ubicacion: 'Av. Industrial 321',
-    lat: 19.4380,
-    lng: -99.1380,
-    promotor: 'Sofía Vargas',
-    promotorId: 108,
-    estado: 'pendiente',
-    notas: 'Seguimiento de cotización',
-    fotos: 0
-  }
-];
-
 function MisVisitasContent() {
   const router = useRouter();
   const [userInfo, setUserInfo] = useState<{ username: string; name: string; role: string } | null>(null);
   const [visitas, setVisitas] = useState<Visita[]>([]);
   const [filteredVisitas, setFilteredVisitas] = useState<Visita[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState<string>("todos");
   const [filterFecha, setFilterFecha] = useState<string>("");
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   useEffect(() => {
     // Verificar autenticación
@@ -181,29 +68,151 @@ function MisVisitasContent() {
     loadVisitas(user);
   }, [router]);
 
-  const loadVisitas = (user: { username: string; name: string; role: string } | null) => {
+  // Cerrar menú de exportación al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (exportMenuOpen && !target.closest('.relative.inline-block')) {
+        setExportMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [exportMenuOpen]);
+
+  const loadVisitas = async (user: { username: string; name: string; role: string } | null) => {
     setLoading(true);
+    setError(null);
     
-    // Simular carga de datos
-    setTimeout(() => {
-      let visitasFiltradas = [...visitasEjemplo];
+    try {
+      // Obtener visitas reales de la API
+      const apiVisits = await getVisits();
       
-      // Si no es admin, filtrar solo las visitas del usuario actual
-      // Normalizar el rol a mayúsculas para comparar
+      // Mapear datos del backend al formato del frontend
+      const visitasMapeadas: Visita[] = apiVisits.map((apiVisit: any) => {
+        // Usar date o createdAt para la fecha
+        const fechaISO = apiVisit.date || apiVisit.createdAt;
+        const fechaObj = new Date(fechaISO);
+        const fecha = fechaObj.toISOString().split('T')[0];
+        const hora = fechaObj.toLocaleTimeString('es-ES', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        });
+        
+        // Convertir estado del backend al frontend
+        let estado: 'completada' | 'pendiente' | 'cancelada';
+        const status = apiVisit.status?.toUpperCase();
+        
+        switch (status) {
+          case 'COMPLETED':
+          case 'FINISHED':
+          case 'DONE':
+            estado = 'completada';
+            break;
+          case 'SCHEDULED':
+          case 'PENDING':
+          case 'IN_PROGRESS':
+            estado = 'pendiente';
+            break;
+          case 'CANCELLED':
+          case 'CANCELED':
+            estado = 'cancelada';
+            break;
+          default:
+            estado = 'pendiente';
+        }
+        
+        // Crear ubicación a partir de dirección o coordenadas
+        let ubicacion = 'Ubicación no disponible';
+        if (apiVisit.address) {
+          ubicacion = apiVisit.address;
+        } else if (apiVisit.latitude && apiVisit.longitude) {
+          ubicacion = `Lat: ${apiVisit.latitude.toFixed(6)}, Lng: ${apiVisit.longitude.toFixed(6)}`;
+        }
+        
+        // Obtener información del cliente
+        const clienteNombre = apiVisit.client?.name || apiVisit.clientName || 'Cliente no especificado';
+        
+        // Obtener información del promotor
+        const promotorNombre = apiVisit.promoter?.name || 'Promotor no especificado';
+        const promotorId = apiVisit.promoterId || apiVisit.promoter?.id || 0;
+        
+        // Contar fotos - manejar diferentes tipos de datos
+        let fotosCount = 0;
+        if (apiVisit.beforePhotos) {
+          if (typeof apiVisit.beforePhotos === 'string') {
+            fotosCount += (apiVisit.beforePhotos.split(' ').filter((p: string) => p.trim()).length || 0);
+          } else if (Array.isArray(apiVisit.beforePhotos)) {
+            fotosCount += apiVisit.beforePhotos.length;
+          }
+        }
+        if (apiVisit.afterPhotos) {
+          if (typeof apiVisit.afterPhotos === 'string') {
+            fotosCount += (apiVisit.afterPhotos.split(' ').filter((p: string) => p.trim()).length || 0);
+          } else if (Array.isArray(apiVisit.afterPhotos)) {
+            fotosCount += apiVisit.afterPhotos.length;
+          }
+        }
+        
+        return {
+          id: apiVisit.id || 0,
+          fecha,
+          hora,
+          cliente: clienteNombre,
+          ubicacion,
+          lat: apiVisit.latitude,
+          lng: apiVisit.longitude,
+          promotor: promotorNombre,
+          promotorId: typeof promotorId === 'string' ? parseInt(promotorId) || 0 : promotorId,
+          estado,
+          notas: apiVisit.notes || '',
+          fotos: fotosCount
+        };
+      });
+      
+      // Filtrar visitas si no es admin
       const userRole = user?.role?.toUpperCase();
+      let visitasFiltradas = [...visitasMapeadas];
+      
       if (userRole !== 'ADMIN') {
-        // En una implementación real, aquí se filtraría por userId
-        // Para la demo, asignamos algunas visitas al usuario actual
-        const userId = 101; // ID del usuario actual (simulado)
-        visitasFiltradas = visitasFiltradas.filter(v => 
-          v.promotorId === userId || Math.random() > 0.5 // Demo: mezcla de visitas
-        );
+        // En una implementación real, el backend debería filtrar por userId
+        // Por ahora mostramos todas las visitas obtenidas
+        // TODO: Implementar filtrado por userId cuando el backend lo soporte
+        visitasFiltradas = visitasMapeadas;
       }
       
       setVisitas(visitasFiltradas);
       setFilteredVisitas(visitasFiltradas);
+    } catch (error: any) {
+      console.error('Error al cargar visitas:', error);
+      
+      // Manejar diferentes tipos de errores
+      let errorMessage = 'Error al cargar las visitas. Por favor, intenta nuevamente.';
+      
+      if (error?.message?.includes('Usuario no encontrado')) {
+        errorMessage = 'Tu usuario no está registrado en el sistema. Por favor, contacta al administrador.';
+      } else if (error?.message?.includes('Token inválido')) {
+        errorMessage = 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.';
+      } else if (error?.status === 401) {
+        errorMessage = 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.';
+      } else if (error?.status === 403) {
+        errorMessage = 'No tienes permisos para ver las visitas.';
+      } else if (error?.message?.includes('Failed to fetch')) {
+        errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
+      }
+      
+      setError(errorMessage);
+      
+      // En caso de error, mostrar lista vacía
+      setVisitas([]);
+      setFilteredVisitas([]);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   useEffect(() => {
@@ -358,6 +367,29 @@ function MisVisitasContent() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
+        {/* Mensaje de error */}
+        {error && (
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-6">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="text-red-600" size={24} />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-900 mb-2">Error al cargar visitas</h3>
+                <p className="text-red-700">{error}</p>
+                <div className="mt-4">
+                  <button
+                    onClick={() => loadVisitas(userInfo)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow p-6 border border-gray-100">
@@ -429,27 +461,38 @@ function MisVisitasContent() {
                 <RefreshCw size={18} />
                 Actualizar
               </button>
-              <div className="relative group">
-                <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <div className="relative inline-block">
+                <button
+                  onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
                   <Download size={18} />
                   Exportar
                 </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 hidden group-hover:block">
-                  <button
-                    onClick={() => handleExport('csv')}
-                    className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                  >
-                    <FileText size={16} />
-                    Exportar a CSV
-                  </button>
-                  <button
-                    onClick={() => handleExport('pdf')}
-                    className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                  >
-                    <FileDown size={16} />
-                    Exportar a PDF
-                  </button>
-                </div>
+                {exportMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <button
+                      onClick={() => {
+                        handleExport('csv');
+                        setExportMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <FileText size={16} />
+                      Exportar a CSV
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleExport('pdf');
+                        setExportMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <FileDown size={16} />
+                      Exportar a PDF
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

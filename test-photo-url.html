@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de URLs de Fotos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-case {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .test-case h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        .input {
+            font-family: monospace;
+            background-color: #f0f0f0;
+            padding: 5px;
+            border-radius: 3px;
+            margin: 5px 0;
+        }
+        .output {
+            font-family: monospace;
+            background-color: #e8f5e9;
+            padding: 5px;
+            border-radius: 3px;
+            margin: 5px 0;
+            border-left: 3px solid #4CAF50;
+        }
+        .error {
+            background-color: #ffebee;
+            border-left: 3px solid #f44336;
+        }
+        .image-container {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+        }
+        .image-container img {
+            max-width: 100%;
+            max-height: 200px;
+            display: block;
+            margin: 0 auto;
+        }
+        .image-status {
+            text-align: center;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .error-status {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .loading {
+            background-color: #fff3e0;
+            color: #ef6c00;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Prueba de URLs de Fotos - Sistema de Gestión de Visitas</h1>
+        
+        <div class="test-case">
+            <h3>Configuración del Sistema</h3>
+            <div class="input">API Base URL: <span id="apiBaseUrl">http://localhost:3001</span></div>
+            <div class="input">Función getPhotoUrl disponible: <span id="functionStatus">Cargando...</span></div>
+        </div>
+
+        <div class="test-case">
+            <h3>Prueba 1: Ruta relativa simple</h3>
+            <div class="input">Entrada: "/uploads/photos/photo1.jpg"</div>
+            <div class="output" id="test1Output">Calculando...</div>
+            <div class="image-container">
+                <div class="image-status loading" id="test1Status">Cargando imagen...</div>
+                <img id="test1Image" alt="Imagen de prueba 1" onload="onImageLoad('test1')" onerror="onImageError('test1')">
+            </div>
+            <button onclick="runTest1()">Probar</button>
+        </div>
+
+        <div class="test-case">
+            <h3>Prueba 2: Ruta sin slash inicial</h3>
+            <div class="input">Entrada: "uploads/photos/photo2.jpg"</div>
+            <div class="output" id="test2Output">Calculando...</div>
+            <div class="image-container">
+                <div class="image-status loading" id="test2Status">Cargando imagen...</div>
+                <img id="test2Image" alt="Imagen de prueba 2" onload="onImageLoad('test2')" onerror="onImageError('test2')">
+            </div>
+            <button onclick="runTest2()">Probar</button>
+        </div>
+
+        <div class="test-case">
+            <h3>Prueba 3: URL completa (no debe modificarse)</h3>
+            <div class="input">Entrada: "https://example.com/image.jpg"</div>
+            <div class="output" id="test3Output">Calculando...</div>
+            <div class="image-container">
+                <div class="image-status loading" id="test3Status">Cargando imagen...</div>
+                <img id="test3Image" alt="Imagen de prueba 3" onload="onImageLoad('test3')" onerror="onImageError('test3')">
+            </div>
+            <button onclick="runTest3()">Probar</button>
+        </div>
+
+        <div class="test-case">
+            <h3>Prueba 4: Base64 (no debe modificarse)</h3>
+            <div class="input">Entrada: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="</div>
+            <div class="output" id="test4Output">Calculando...</div>
+            <div class="image-container">
+                <div class="image-status loading" id="test4Status">Cargando imagen...</div>
+                <img id="test4Image" alt="Imagen de prueba 4" onload="onImageLoad('test4')" onerror="onImageError('test4')">
+            </div>
+            <button onclick="runTest4()">Probar</button>
+        </div>
+
+        <div class="test-case">
+            <h3>Prueba 5: Path vacío</h3>
+            <div class="input">Entrada: ""</div>
+            <div class="output" id="test5Output">Calculando...</div>
+            <div class="image-container">
+                <div class="image-status" id="test5Status">No se mostrará imagen (path vacío)</div>
+            </div>
+            <button onclick="runTest5()">Probar</button>
+        </div>
+
+        <div class="test-case">
+            <h3>Prueba 6: Imagen real del sistema</h3>
+            <div class="input">Entrada: "/api/uploads/visits/123/before/photo.jpg"</div>
+            <div class="output" id="test6Output">Calculando...</div>
+            <div class="image-container">
+                <div class="image-status loading" id="test6Status">Cargando imagen...</div>
+                <img id="test6Image" alt="Imagen de prueba 6" onload="onImageLoad('test6')" onerror="onImageError('test6')">
+            </div>
+            <button onclick="runTest6()">Probar</button>
+        </div>
+
+        <div class="test-case">
+            <h3>Prueba de función checkImageUrl</h3>
+            <div class="input">URL a verificar: <input type="text" id="checkUrl" value="/api/uploads/visits/123/before/photo.jpg" style="width: 100%; padding: 5px; margin: 5px 0;"></div>
+            <div class="output" id="checkResult">Esperando prueba...</div>
+            <button onclick="checkImage()">Verificar URL</button>
+        </div>
+    </div>
+
+    <script>
+        // Simulación de la función getPhotoUrl del sistema
+        function getPhotoUrl(path) {
+            if (!path) {
+                console.warn('[DEBUG] getPhotoUrl: Path vacío o nulo');
+                return '';
+            }
+            
+            // Si ya es una URL completa, retornar tal cual
+            if (path.startsWith('http')) {
+                console.log(`[DEBUG] getPhotoUrl: URL completa detectada: ${path}`);
+                return path;
+            }
+            
+            // Si es base64, retornar tal cual
+            if (path.startsWith('data:image')) {
+                console.log('[DEBUG] getPhotoUrl: Base64 detectado');
+                return path;
+            }
+            
+            // Si es una ruta relativa, construir URL completa
+            const API_BASE_URL = 'http://localhost:3001';
+            console.log(`[DEBUG] getPhotoUrl: API_BASE_URL: ${API_BASE_URL}`);
+            console.log(`[DEBUG] getPhotoUrl: Path original: ${path}`);
+            
+            // Asegurar que la ruta tenga slash inicial si no lo tiene
+            const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+            const fullUrl = `${API_BASE_URL}${normalizedPath}`;
+            
+            console.log(`[DEBUG] getPhotoUrl: URL generada: ${fullUrl}`);
+            return fullUrl;
+        }
+
+        // Función para verificar si una URL de imagen es válida
+        async function checkImageUrl(url) {
+            if (!url) return false;
+            
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                const contentType = response.headers.get('content-type');
+                return response.ok && (contentType?.startsWith('image/') || false);
+            } catch (error) {
+                console.warn(`[DEBUG] checkImageUrl: Error verificando URL ${url}:`, error);
+                return false;
+            }
+        }
+
+        // Funciones de utilidad
+        function updateOutput(testId, result) {
+            document.getElementById(testId + 'Output').textContent = result;
+            document.getElementById(testId + 'Output').className = 'output';
+        }
+
+        function updateError(testId, error) {
+            document.getElementById(testId + 'Output').textContent = 'Error: ' + error;
+            document.getElementById(testId + 'Output').className = 'output error';
+        }
+
+        function setImageStatus(testId, status, className) {
+            const statusEl = document.getElementById(testId + 'Status');
+            statusEl.textContent = status;
+            statusEl.className = 'image-status ' + className;
+        }
+
+        function onImageLoad(testId) {
+            setImageStatus(testId, '✓ Imagen cargada correctamente', 'success');
+        }
+
+        function onImageError(testId) {
+            setImageStatus(testId, '✗ Error cargando la imagen', 'error-status');
+        }
+
+        // Funciones de prueba
+        function runTest1() {
+            const input = "/uploads/photos/photo1.jpg";
+            try {
+                const result = getPhotoUrl(input);
+                updateOutput('test1', result);
+                const img = document.getElementById('test1Image');
+                img.src = result;
+                setImageStatus('test1', 'Cargando imagen...', 'loading');
+            } catch (error) {
+                updateError('test1', error.message);
+            }
+        }
+
+        function runTest2() {
+            const input = "uploads/photos/photo2.jpg";
+            try {
+                const result = getPhotoUrl(input);
+                updateOutput('test2', result);
+                const img = document.getElementById('test2Image');
+                img.src = result;
+                setImageStatus('test2', 'Cargando imagen...', 'loading');
+            } catch (error) {
+                updateError('test2', error.message);
+            }
+        }
+
+        function runTest3() {
+            const input = "https://example.com/image.jpg";
+            try {
+                const result = getPhotoUrl(input);
+                updateOutput('test3', result);
+                const img = document.getElementById('test3Image');
+                img.src = result;
+                setImageStatus('test3', 'Cargando imagen...', 'loading');
+            } catch (error) {
+                updateError('test3', error.message);
+            }
+        }
+
+        function runTest4() {
+            const input = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+            try {
+                const result = getPhotoUrl(input);
+                updateOutput('test4', result);
+                const img = document.getElementById('test4Image');
+                img.src = result;
+                setImageStatus('test4', 'Cargando imagen...', 'loading');
+            } catch (error) {
+                updateError('test4', error.message);
+            }
+        }
+
+        function runTest5() {
+            const input = "";
+            try {
+                const result = getPhotoUrl(input);
+                updateOutput('test5', result === '' ? '(cadena vacía)' : result);
+                const img = document.getElementById('test5Image');
+                if (img) img.src = '';
+                setImageStatus('test5', 'No se mostrará imagen (path vacío)', '');
+            } catch (error) {
+                updateError('test5', error.message);
+            }
+        }
+
+        function runTest6() {
+            const input = "/api/uploads/visits/123/before/photo.jpg";
+            try {
+                const result = getPhotoUrl(input);
+                updateOutput('test6', result);
+                const img = document.getElementById('test6Image');
+                img.src = result;
+                setImageStatus('test6', 'Cargando imagen...', 'loading');
+            } catch (error) {
+                updateError('test6', error.message);
+            }
+        }
+
+        async function checkImage() {
+            const url = document.getElementById('checkUrl').value;
+            const resultEl = document.getElementById('checkResult');
+            
+            if (!url) {
+                resultEl.textContent = 'Por favor ingresa una URL';
+                resultEl.className = 'output error';
+                return;
+            }
+            
+            resultEl.textContent = 'Verificando...';
+            resultEl.className = 'output';
+            
+            try {
+                const isValid = await checkImageUrl(url);
+                if (isValid) {
+                    resultEl.textContent = '✓ URL válida - Es una imagen accesible';
+                    resultEl.className = 'output';
+                } else {
+                    resultEl.textContent = '✗ URL inválida - No es una imagen o no es accesible';
+                    resultEl.className = 'output error';
+                }
+            } catch (error) {
+                resultEl.textContent = '✗ Error verificando URL: ' + error.message;
+                resultEl.className = 'output error';
+            }
+        }
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('functionStatus').textContent = '✓ Disponible';
+            
+            // Ejecutar pruebas automáticamente
+            setTimeout(runTest1, 100);
+            setTimeout(runTest2, 200);
+            setTimeout(runTest3, 300);
+            setTimeout(runTest4, 400);
+            setTimeout(runTest5, 500);
+            setTimeout(runTest6, 600);
+        });
+    </script>
+</body>
+</html>

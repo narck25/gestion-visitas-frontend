@@ -82,11 +82,11 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">VP</span>
+                <span className="text-white font-bold text-xl">KF</span>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Visitas Promotores</h1>
-                <p className="text-sm text-gray-600">Aplicación PWA</p>
+                <h1 className="text-xl font-bold text-gray-900">KRAM Force</h1>
+                <p className="text-sm text-gray-600">Plataforma Comercial</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -126,10 +126,10 @@ export default function Home() {
       <main className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            Gestión de Visitas para <span className="text-blue-600">Promotores de Ventas</span>
+            Gestión Comercial de <span className="text-blue-600">Fuerza de Ventas</span>
           </h1>
           <p className="text-xl text-gray-600 mb-10">
-            Aplicación PWA moderna para registrar visitas, capturar imágenes y sincronizar datos offline.
+            Aplicación PWA de KRAM Force para registrar visitas comerciales, capturar evidencias y gestionar pedidos incluso sin conexión.
           </p>
 
           {/* Features Grid */}
@@ -140,7 +140,7 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">PWA Instalable</h3>
               <p className="text-gray-600">
-                Instala como app nativa en tu dispositivo móvil. Funciona offline y se sincroniza automáticamente.
+                Instala KRAM Force como aplicación en tu dispositivo móvil. Funciona sin conexión y sincroniza los datos automáticamente.
               </p>
             </div>
 
@@ -148,9 +148,9 @@ export default function Home() {
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
                 <span className="text-green-600 text-2xl">📸</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Captura de Imágenes</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Captura de Evidencias</h3>
               <p className="text-gray-600">
-                Toma fotos antes y después de cada visita. Geolocalización automática y validación en tiempo real.
+                Registra fotografías antes y después de cada visita comercial con geolocalización y validación en tiempo real.
               </p>
             </div>
 
@@ -158,16 +158,16 @@ export default function Home() {
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
                 <span className="text-purple-600 text-2xl">⚡</span>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Sincronización Offline</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Modo Offline</h3>
               <p className="text-gray-600">
-                Trabaja sin conexión a internet. Los datos se guardan localmente y se sincronizan cuando hay red.
+                Trabaja sin conexión a internet. Los datos se almacenan localmente y se sincronizan automáticamente cuando hay conexión.
               </p>
             </div>
           </div>
 
           {/* PWA Installation Guide */}
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-8 mb-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">📲 Instala como App Móvil</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">📲 Instala KRAM Force como App Móvil</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="text-left">
                 <h3 className="font-semibold text-gray-900 mb-2">En Chrome/Edge:</h3>
@@ -194,26 +194,34 @@ export default function Home() {
               href="/nueva-visita" 
               className="px-8 py-4 bg-green-600 text-white text-lg font-semibold rounded-xl hover:bg-green-700 transition-colors shadow-lg"
             >
-              ➕ Nueva Visita
+              ➕ Registrar Visita
             </Link>
             <Link 
               href="/mis-visitas" 
               className="px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-lg"
             >
-              📋 Mis Visitas
+              📋 Historial de Visitas
             </Link>
             <Link 
               href="/captura" 
               className="px-8 py-4 bg-white text-gray-900 text-lg font-semibold rounded-xl border-2 border-blue-600 hover:bg-blue-50 transition-colors"
             >
-              📸 Demo Captura
+              📸 Captura de Evidencia
             </Link>
+            {userInfo && (userInfo.role === 'ADMIN' || userInfo.role === 'SUPERVISOR' || userInfo.role === 'PROMOTOR') && (
+              <Link 
+                href="/pedidos/nuevo" 
+                className="px-8 py-4 bg-red-600 text-white text-lg font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg"
+              >
+                🛒 Crear Pedido
+              </Link>
+            )}
             {userInfo?.role === 'ADMIN' && (
               <Link 
                 href="/admin" 
                 className="px-8 py-4 bg-purple-600 text-white text-lg font-semibold rounded-xl hover:bg-purple-700 transition-colors shadow-lg"
               >
-                👑 Panel Admin
+                👑 Administración
               </Link>
             )}
             {userInfo?.role === 'SUPERVISOR' && (
@@ -229,7 +237,7 @@ export default function Home() {
                 href="/clientes" 
                 className="px-8 py-4 bg-teal-600 text-white text-lg font-semibold rounded-xl hover:bg-teal-700 transition-colors shadow-lg"
               >
-                🏢 Clientes
+                🏢 Gestión de Clientes
               </Link>
             )}
           </div>
@@ -249,7 +257,7 @@ export default function Home() {
             <div className="flex items-center justify-center space-x-4 mt-4">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
               <p className="text-gray-700">
-                <span className="font-semibold">Estado PWA:</span> Aplicación instalable y lista para uso offline
+                <span className="font-semibold">Estado de KRAM Force:</span> Aplicación lista para uso offline
               </p>
             </div>
           </div>
@@ -356,18 +364,16 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
-              <h3 className="text-xl font-bold">Visitas Promotores PWA</h3>
-              <p className="text-gray-400">© 2024 - Todos los derechos reservados</p>
+              <h3 className="text-xl font-bold">KRAM Force - Plataforma Comercial</h3>
+              <p className="text-gray-400">© 2026 - Todos los derechos reservados</p>
             </div>
             <div className="flex space-x-6">
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                Política de Privacidad
               </a>
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                Términos de Uso
               </a>
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                Soporte
+                
               </a>
             </div>
           </div>

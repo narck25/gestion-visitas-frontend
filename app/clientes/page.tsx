@@ -44,14 +44,14 @@ function ClientesContent() {
     isOpen: boolean;
     clientId: number | null;
     clientName: string;
-    promotorId: string;
+    promoterId: string;
     loading: boolean;
     promotores: Array<{ id: number; name: string; email?: string }>;
   }>({
     isOpen: false,
     clientId: null,
     clientName: "",
-    promotorId: "",
+    promoterId: "",
     loading: false,
     promotores: []
   });
@@ -66,9 +66,9 @@ function ClientesContent() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getClients();
-      setClients(data);
-      setFilteredClients(data);
+      const response = await getClients(1, 1000); // Obtener todos los clientes
+      setClients(response.clients);
+      setFilteredClients(response.clients);
     } catch (err: any) {
       setError(err.message || "Error al cargar clientes");
       console.error("Error loading clients:", err);
@@ -142,15 +142,22 @@ function ClientesContent() {
         isOpen: true,
         clientId,
         clientName,
-        promotorId: "",
+        promoterId: "",
         loading: true
       }));
 
       // Fetch promotores
-      const promotores = await apiClient.getPromotores();
+      const response = await apiClient.getPromotores();
+      console.log("RESPUESTA PROMOTORES:", response);
+      
+      // Extraer el array de promotores de la respuesta
+      // La respuesta puede ser: { success: true, data: [...] } o directamente el array
+      const promotores = response.data || response || [];
+      console.log("PROMOTORES ARRAY:", promotores);
+      
       setAssignModal(prev => ({
         ...prev,
-        promotores: promotores || [],
+        promotores: Array.isArray(promotores) ? promotores : [],
         loading: false
       }));
     } catch (err: any) {
@@ -168,25 +175,38 @@ function ClientesContent() {
       isOpen: false,
       clientId: null,
       clientName: "",
-      promotorId: "",
+      promoterId: "",
       loading: false,
       promotores: []
     });
   };
 
   const handleAssignPromotor = async () => {
-    if (!assignModal.clientId || !assignModal.promotorId) {
-      alert("Por favor selecciona un promotor");
+    if (!assignModal.clientId || !assignModal.promoterId) {
+      alert("Debes seleccionar un promotor");
       return;
     }
 
     try {
       setAssignModal(prev => ({ ...prev, loading: true }));
 
-      // Call PATCH /api/clients/:id/assign
-      await apiClient.patch(`/api/clients/${assignModal.clientId}/assign`, {
-        promotorId: parseInt(assignModal.promotorId)
+      // Debug log
+      console.log("Assign promoter request:", {
+        url: `/api/clients/${assignModal.clientId}/assign`,
+        clientId: assignModal.clientId,
+        promoterId: assignModal.promoterId,
+        clientName: assignModal.clientName
       });
+
+      // Call PATCH /api/clients/:id/assign
+      console.log("Making API call to:", `/api/clients/${assignModal.clientId}/assign`);
+      console.log("Payload:", { promoterId: assignModal.promoterId });
+      
+      const response = await apiClient.patch(`/api/clients/${assignModal.clientId}/assign`, {
+        promoterId: assignModal.promoterId
+      });
+
+      console.log("API Response:", response);
 
       // Refresh client list
       await loadClients();
@@ -196,6 +216,12 @@ function ClientesContent() {
       
       alert("Promotor asignado exitosamente");
     } catch (err: any) {
+      console.error("Error assigning promoter:", err);
+      console.error("Error details:", {
+        message: err.message,
+        status: err.status,
+        data: err.data
+      });
       alert(`Error al asignar promotor: ${err.message || "Error desconocido"}`);
       setAssignModal(prev => ({ ...prev, loading: false }));
     }
@@ -641,8 +667,8 @@ function ClientesContent() {
                       Seleccionar Promotor
                     </label>
                     <select
-                      value={assignModal.promotorId}
-                      onChange={(e) => setAssignModal(prev => ({ ...prev, promotorId: e.target.value }))}
+                      value={assignModal.promoterId}
+                      onChange={(e) => setAssignModal(prev => ({ ...prev, promoterId: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       disabled={assignModal.loading}
                     >
@@ -673,7 +699,7 @@ function ClientesContent() {
                 </button>
                 <button
                   onClick={handleAssignPromotor}
-                  disabled={assignModal.loading || !assignModal.promotorId}
+                  disabled={assignModal.loading || !assignModal.promoterId}
                   className="flex-1 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {assignModal.loading ? (

@@ -26,8 +26,9 @@ export function exportToCSV(data: any[], filename: string = 'export.csv'): void 
     )
   ].join('\n');
 
-  // Crear blob y descargar
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // Crear blob con BOM para UTF-8 (para que Excel reconozca acentos)
+  const BOM = '\uFEFF'; // Byte Order Mark para UTF-8
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
   

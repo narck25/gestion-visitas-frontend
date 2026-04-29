@@ -24,7 +24,7 @@ import { getUserInfo } from "@/lib/auth";
 function EditarClienteContent() {
   const router = useRouter();
   const params = useParams();
-  const clientId = params.id ? parseInt(params.id as string) : null;
+  const clientId = params.id as string;
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,6 +48,7 @@ function EditarClienteContent() {
     setUserInfo(user);
     
     if (clientId) {
+      console.log("CLIENT ID:", clientId);
       loadClient(clientId);
     } else {
       setError("ID de cliente no válido");
@@ -55,7 +56,7 @@ function EditarClienteContent() {
     }
   }, [clientId]);
 
-  const loadClient = async (id: number) => {
+  const loadClient = async (id: string) => {
     setLoading(true);
     setError(null);
     try {
