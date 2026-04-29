@@ -3,8 +3,18 @@ node_modules
 .next
 out
 build
+dist
+
+# TypeScript
+tsconfig.tsbuildinfo
+.tsbuildinfo
+*.tsbuildinfo
+
+# Next.js
+.next/
 
 .env
+
 .env.local
 .env.development
 .env.production
