@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p 3000",
-    "clean": "rimraf .next out dist tsconfig.tsbuildinfo .tsbuildinfo",
+    "clean": "rimraf dist out tsconfig.tsbuildinfo .tsbuildinfo",
     "prebuild": "npm run clean"
   },
   "dependencies": {
